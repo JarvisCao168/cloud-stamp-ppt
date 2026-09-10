@@ -1,8 +1,8 @@
 # 云章PPT智能体系统 - 项目状态报告
 
 **更新日期**: 2026-09-10 22:00
-**当前阶段**: 前后端开发完成，后端服务已启动，E2E 测试待验证
-**最新 Commit**: `8a3145d` — feat(backend): add FastAPI backend service
+**当前阶段**: 前后端开发完成，用户调研第一轮+第二轮数据采集完成，测试覆盖率93.57%
+**最新 Commit**: `776abc3` — docs: collect user feedback from HN (20 high-quality responses)
 
 ## 团队配置
 
@@ -75,9 +75,10 @@
 - [x] STATUS.md
 - [x] TODOLIST.md
 - [x] ppt-market-research-plan.md（平台采集方案，替代问卷）
-- [x] docs/user-feedback-raw.csv（20条结构化数据）
-- [x] docs/user-feedback-summary.md（汇总报告）
-- [x] docs/user-feedback-insights.md（洞察报告）
+- [x] docs/user-feedback-raw.csv（55条结构化数据：HN 20条 + 国内35条）
+- [x] docs/user-feedback-summary.md（第一轮汇总报告，HN）
+- [x] docs/user-feedback-insights.md（第一轮洞察报告）
+- [x] docs/user-feedback-summary-round2.md（第二轮汇总报告，国内平台）
 - [x] docs/competitive-analysis-test-plan.md（竞品测试大纲 v1.0）
 - [x] docs/competitive-analysis.json（结构化数据骨架）
 
@@ -116,7 +117,7 @@ e1a3692 fix(e2e): strengthen invalid session assertion + add Assets API tests
 | P1 | 后端压力测试 | @Codex | 待执行 |
 | P1 | 生产环境部署方案 | @Hermes | 待开始 |
 | P0 | 素材库数据结构设计 | @Hermes | ⏳ 待JARVIS批准 |
-| P0 | 用户反馈采集（平台采集替代问卷） | Claude | ✅ 首轮20条已完成，继续扩大采集 |
+| P0 | 用户反馈采集（平台采集替代问卷） | Claude/Hermes | ✅ 55条已完成（HN 20 + 国内 35），继续扩量至170+ |
 | P1 | 竞品体验对比报告（5款） | Codex | ✅ 测试框架就绪 |
 | P0 | 素材库数据结构设计 | @Hermes | ⏳ 待JARVIS批准 |
 | P2 | Error Boundary 添加 | — | 建议项 |

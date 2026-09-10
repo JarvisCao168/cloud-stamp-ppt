@@ -55,3 +55,6 @@ venv/
 
 # Backend exports (generated at runtime)
 backend/exports/
+
+# Test output artifacts
+outputs/

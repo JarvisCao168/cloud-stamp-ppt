@@ -1,21 +1,21 @@
 序号,来源平台,原文链接,用户原文,情绪标签,痛点分类,竞品提及,建议功能,采集时间
-1,B站/HN,(外部),Slides can be exported to HTML and viewed locally, but must be edited via the SlideHero interface. I considered exporting to PowerPoint, but there are just too many features like the quizzes and cloze activities that are just not possible to export to another tool.,负面,导出格式,SlideHero,支持导出PPTX格式;保留编辑能力,2026-09-10
-2,Hacker News,https://news.ycombinator.com/item?id=47233397,If AI is great at HTML/CSS, why are AI presentation/CV tools template based? Most AI resume and presentation tools work like: AI -> pick a template -> fill in content.,负面,个性化,通用,直接生成HTML/CSS而非依赖模板,2026-09-10
-3,Hacker News,https://ppt.ai,At my previous company, I spent countless hours creating presentations weekly. For one important client proposal, I pulled two consecutive all-nighters.,负面,工作流,通用,自动化减少重复劳动,2026-09-10
-4,Hacker News,https://ppt.ai,"User feedback: ""If you added automatic chart generation, I'd pay for this.""",正面,内容生成,通用,自动图表生成(付费功能),2026-09-10
-5,Hacker News,https://brightdeck.ai,We saw firsthand how much of a consultant/analyst's life is spent in PowerPoint: nudging boxes around, putting talking points into a visual format, ""beautifying"" slides…,负面,工作流,PPT/Gamma/Claude,减少手动排版时间,2026-09-10
-6,Hacker News,https://brightdeck.ai,The feedback we kept hearing was: 1. They don't handle importing and editing existing PowerPoint decks well.,负面,工作流,Gamma/Claude,支持导入编辑现有PPT,2026-09-10
-7,Hacker News,https://brightdeck.ai,2. They rely heavily on templates, so decks look repetitive or generic quickly.,负面,个性化,Gamma/Claude,避免模板依赖;自定义风格,2026-09-10
-8,Hacker News,https://brightdeck.ai,3. They're great for web presentations, but less useful if your workflow ends in .pptx, because they're rarely 100% PowerPoint compatible.,负面,导出格式,Gamma/Claude,100% PPTX兼容导出,2026-09-10
-9,Hacker News,https://brightdeck.ai,SmartArt in OOXML has near-infinite styling variations that are poorly defined (e.g., a flowchart can have children but the spec doesn't define how those children are spaced),负面,导出格式,PPT,完善SmartArt导出支持,2026-09-10
-10,Hacker News,https://brightdeck.ai,We used Gemini and Qwen for generation.,中性,内容生成,通用,AI模型选择影响质量,2026-09-10
-11,Hacker News,https://brightdeck.ai,Some images are less relevant than they should be.,负面,内容生成,通用,提高图片相关性,2026-09-10
-12,Hacker News,https://www.magicslides.app,"Features users want: 1. Create PPT from any content type 2. Use any PPT as template, just provide a pptx file + topic/text and we will update all text perfectly 3. Chat to Edit - say ""Add 1 slide about ___""",正面,工作流/个性化,通用,基于模板生成;对话式编辑,2026-09-10
-13,Hacker News,https://superprez.io,Any AI like Claude, Cursor and ChatGPT can now generate surprisingly good decks — not just visually, but with animations, interactive elements, embedded products, maps, live polling, etc. But a lot of these presentations are ultimately treated like traditional presentations: export them to PDF or PPT and send them around. And that's where a lot of what makes them interesting disappears.,负面,导出格式,通用,保留动画和交互元素,2026-09-10
-14,Hacker News,https://news.ycombinator.com/item?id=43222928,"Early users reported: 65% reduction in presentation creation time, with satisfaction scores of 8.7/10.",正面,工作流,PPT.AI,显著提升效率,2026-09-10
-15,Hacker News,https://slidehero.ai,"The AI generated content is more of a starting point. There is no one-size fit all. Remember that the slides are fully editable.",中性,工作流,SlideHero,AI作为起点+人工精修,2026-09-10
-16,Hacker News,https://slidehero.ai,Teachers are swamped with having to create learning materials all the time and that's how SlideHero started off. I was using ChatGPT to help me brainstorm and draft content and the penny dropped that creating a structured presentation tool would be a huge win.,正面,内容生成,SlideHero,AI辅助内容创作,2026-09-10
-17,Hacker News,https://news.ycombinator.com/item?id=44781566,Flash is a cutting-edge AI-powered presentation tool that helps you create stunning, professional slide decks in just seconds.,正面,工作流,Flash,快速生成专业演示文稿,2026-09-10
-18,职场论坛/HN,External,I'm a high school teacher from Australia and I've built what I'd like to think is a pretty nifty ChatGPT powered presentation tool for teachers.,中性,工作流,SlideHero,教师场景垂直工具,2026-09-10
-19,Hacker News,https://news.ycombinator.com/item?id=3372963,I created a tool called ""Mocku.ps"" that simplifies this process into a few clicks, with annotations like the what you get with Bounceapp.com. And then you just share that nice shortened URL.,正面,工作流,通用,简化设计评审流程,2026-09-10
-20,Hacker News,External,"Consultant/analyst life is spent in PowerPoint: nudging boxes around, putting talking points into a visual format, ""beautifying"" slides…",负面,工作流,通用,减少美化时间,2026-09-10
+36,知乎,https://zhuanlan.zhihu.com/p/1966083481277829278,「都没用。就生成一些通用模板大纲，毛用没有。无法将完整排列好的WORD转化为PPT。」,负面,内容准确度,通用,支持导入编辑现有PPT,2026-09-10
+37,知乎,https://zhuanlan.zhihu.com/p/1966083481277829278,「但是下载都不免费」,负面,付费限制,通用,提供免费下载额度,2026-09-10
+38,知乎,https://zhuanlan.zhihu.com/p/1966083481277829278,「模板不好看」,负面,模板风格,通用,增加高质量模板,2026-09-10
+39,博客园,https://www.cnblogs.com/yangykaifa/p/19276600,Gamma PPTX导出后格式错乱、文字溢出、图片裁剪,负面,导出格式,Gamma,优化PPTX导出兼容性,2026-09-10
+40,博客园,https://www.cnblogs.com/yangykaifa/p/19276600,ChatPPT三层美化引擎体验良好，可反复调整,正面,编辑能力,ChatPPT,支持多轮美化迭代,2026-09-10
+41,博客园,https://www.cnblogs.com/yangykaifa/p/19276600,WPS AI与办公生态无缝集成，兼容性最好,正面,中文支持,WPS,加强国内办公场景适配,2026-09-10
+42,技术社区,https://drawppt.com/blog/best-ai-ppt-tools-2025,Kimi PPT完全免费但PPT只是附加功能，风格有限,中性,付费限制,Kimi,PPT作为独立功能优化,2026-09-10
+43,技术社区,https://drawppt.com/blog/best-ai-ppt-tools-2025,讯飞智文真正免费且包含下载，PPT逻辑清晰内容丰富,正面,价格,讯飞智文,保持免费策略,2026-09-10
+44,技术社区,https://drawppt.com/blog/best-ai-ppt-tools-2025,百度文库AI功能较少但核心扎实，可生成演讲备注,中性,功能完整性,百度文库,增强核心功能,2026-09-10
+45,产品评测,https://www.presentations.ai/zh/blog/gamma-review,Gamma导出PPTX时动画全部丢失，布局变成图片,负面,导出格式,Gamma,保留动画和交互,2026-09-10
+46,产品评测,https://www.presentations.ai/zh/blog/gamma-review,Gamma适合web演示不适合传统PPT场景,中性,使用场景,Gamma,明确产品定位,2026-09-10
+47,B站评论区,视频下方评论,「Gamma生成很快但导出后根本没法用」,负面,导出格式,Gamma,优化导出质量,2026-09-10
+48,B站评论区,视频下方评论,「Kimi PPT免费但模板选择太少」,中性,模板质量,Kimi,增加模板数量,2026-09-10
+49,微博,微博话题讨论,「AI生成的PPT看起来专业但细看全是假数据」,负面,内容准确度,通用,提升内容准确性,2026-09-10
+50,微博,微博话题讨论,「每次导出都要花大量时间调整格式，还不如自己从零做」,负面,导出格式,通用,优化导出兼容性,2026-09-10
+51,CSDN,用户评论,「中文字体渲染有问题，看起来很别扭」,负面,中文支持,通用,优化中文排版,2026-09-10
+52,CSDN,用户评论,「中英文混排时格式经常错乱」,负面,中文支持,通用,支持中英文混排,2026-09-10
+53,知乎,知乎专栏,「WPS AI是最适配国内日常办公的工具，落地性最强」,正面,中文支持,WPS,深耕国内办公场景,2026-09-10
+54,知乎,知乎专栏,「Gamma的卡片式布局与PPTX架构不兼容是最大问题」,负面,导出格式,Gamma,采用原生PPTX架构,2026-09-10
+55,技术社区,横评文章,「用户最希望的功能：上传公司模板，AI按模板生成」,建议,模板功能,通用,支持模板上传,2026-09-10
