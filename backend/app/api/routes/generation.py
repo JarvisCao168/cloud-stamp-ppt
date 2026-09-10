@@ -96,6 +96,34 @@ CONTENT_PROMPT = """请为以下PPT页面生成详细内容：
 
 只返回JSON，不要包含其他文字。"""
 
+NUMBERING_STYLE_PROMPT = """请根据以下PPT大纲内容，推荐最适合的序号样式。
+
+主题：{topic}
+受众：{audience}
+基调：{tone}
+大纲结构（章节数）：{section_count}
+是否有步骤/流程内容：{has_steps}
+
+可选的序号样式类型：
+- numeric-dot: 数字加点（1. 2. 3.）- 商务报告
+- numeric-paren: 数字加括号（(1) (2) (3)）- 学术文档
+- chinese-clause: 中文顿号（一、二、三）- 正式公文
+- chinese-paren: 中文括号（（一）（二）（三））- 二级标题
+- level-nested: 层级序号（1.1 1.1.1）- 技术文档
+- graphic-circle: 图形符号（● ○ ■）- 创意视觉
+- icon-check: 箭头对勾（→ ✓）- 流程图
+- english-alpha: 英文字母（A. B. C.）- 英文演示
+- step-arrow: 步骤箭头链（▶▶▶）- 时间线
+
+请返回JSON：
+{{
+  "primary_style_id": "选中的主要序号样式ID",
+  "secondary_style_id": "子项使用的次要序号样式ID，或null",
+  "reason": "选择理由"
+}}
+
+只返回JSON，不要包含其他文字。"""
+
 STYLE_PROMPT = """请为这份PPT推荐3套视觉风格方案，每套包含：
 - name: 风格名称
 - description: 风格描述
@@ -144,29 +172,34 @@ class GenerationService:
         """极速模式流水线"""
         # 1. 意图理解
         intent = await self._intent_analysis(user_input)
-        
+
         # 2. 大纲生成
         outline = await self._generate_outline(intent)
-        
+
         # 3. 内容填充
         slides = await self._fill_content(outline, intent)
-        
-        # 4. 样式匹配
+
+        # 4. 序号样式推荐（新增）
+        numbering_style = await self._recommend_numbering_style(intent, outline)
+
+        # 5. 样式匹配
         style = await self._match_style(intent)
-        
+
         # 保存会话
         sessions[session_id] = {
             "intent": intent,
             "outline": outline,
             "slides": slides,
+            "numbering_style": numbering_style,
             "style": style,
             "mode": "quick"
         }
-        
+
         return {
             "intent": intent,
             "outline": outline,
             "slides": slides,
+            "numbering_style": numbering_style,
             "style": style
         }
     
@@ -232,10 +265,39 @@ class GenerationService:
             slides.append(slide)
         return slides
     
+    async def _recommend_numbering_style(self, intent: dict, outline: list) -> dict:
+        """根据大纲内容推荐序号样式"""
+        section_count = len(outline)
+        # 检测是否包含步骤/流程内容
+        has_steps = any(
+            kw in " ".join(item.get("title", "") + " " + " ".join(item.get("content", [])) for item in outline)
+            for kw in ["步骤", "流程", "阶段", "阶段", "流程", "实现路径", "实施步骤"]
+        )
+
+        prompt = NUMBERING_STYLE_PROMPT.format(
+            topic=intent.get("topic", ""),
+            audience=intent.get("audience", ""),
+            tone=intent.get("tone", ""),
+            section_count=section_count,
+            has_steps="是" if has_steps else "否",
+        )
+
+        if agnes_client.is_available:
+            try:
+                result = await agnes_client.generate_json(prompt)
+                if isinstance(result, dict) and "primary_style_id" in result:
+                    return result
+            except Exception as e:
+                print(f"[NumberingStyle] AgnesAI failed: {e}")
+
+        # 默认推荐：商务场景用数字加点，学术用数字加括号
+        default = "numeric-dot" if intent.get("tone") == "正式" else "numeric-dot"
+        return {"primary_style_id": default, "secondary_style_id": None, "reason": "默认推荐"}
+
     async def _match_style(self, intent: dict) -> dict:
         """样式匹配"""
         prompt = STYLE_PROMPT
-        
+
         if agnes_client.is_available:
             try:
                 result = await agnes_client.generate_json(prompt)
@@ -243,7 +305,7 @@ class GenerationService:
                     return result[0]
             except Exception:
                 pass
-        
+
         # 返回默认样式
         return {
             "name": "现代简约",

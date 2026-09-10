@@ -81,6 +81,130 @@ ANIMATIONS = [
     {"id": "bounce", "name": "弹跳", "category": "advanced"},
 ]
 
+# ========== 第七要素库：序号样式库 ==========
+NUMBERING_STYLES = [
+    {
+        "id": "numeric-dot",
+        "name": "数字序号·",
+        "type": "numeric",
+        "symbols": ["1.", "2.", "3.", "4.", "5."],
+        "description": "标准数字加点号，适用于商务报告",
+        "tags": ["商务", "正式"],
+        "max_depth": 3,
+        "preview_html": "<ol><li>第一项</li><li>第二项</li></ol>",
+    },
+    {
+        "id": "numeric-paren",
+        "name": "数字序号()",
+        "type": "numeric",
+        "symbols": ["(1)", "(2)", "(3)", "(4)", "(5)"],
+        "description": "数字加括号，学术文档常用",
+        "tags": ["学术", "正式"],
+        "max_depth": 3,
+        "preview_html": "<p>(1) 第一项  (2) 第二项</p>",
+    },
+    {
+        "id": "chinese-clause",
+        "name": "中文顿号",
+        "type": "chinese",
+        "symbols": ["一、", "二、", "三、", "四、", "五、"],
+        "description": "中文数字加顿号，正式公文首选",
+        "tags": ["正式", "公文", "政府"],
+        "max_depth": 2,
+        "preview_html": "<p>一、第一项  二、第二项</p>",
+    },
+    {
+        "id": "chinese-paren",
+        "name": "中文括号",
+        "type": "chinese",
+        "symbols": ["（一）", "（二）", "（三）", "（四）", "（五）"],
+        "description": "中文数字加括号，二级标题常用",
+        "tags": ["正式", "公文"],
+        "max_depth": 2,
+        "preview_html": "<p>（一）第一项  （二）第二项</p>",
+    },
+    {
+        "id": "level-nested",
+        "name": "层级序号",
+        "type": "level",
+        "symbols": ["1.1", "1.1.1", "1.1.1.1"],
+        "description": "多级嵌套编号，技术文档/手册适用",
+        "tags": ["技术", "文档", "手册"],
+        "max_depth": 4,
+        "preview_html": "<p>1. 一级  1.1 二级  1.1.1 三级</p>",
+    },
+    {
+        "id": "graphic-circle",
+        "name": "圆形图形",
+        "type": "graphic",
+        "symbols": ["●", "○", "■", "□", "★", "☆"],
+        "description": "图形符号作序号，视觉化列表",
+        "tags": ["创意", "视觉"],
+        "max_depth": 1,
+        "preview_html": "<p>● 第一项  ○ 第二项  ■ 第三项</p>",
+    },
+    {
+        "id": "icon-check",
+        "name": "箭头图标",
+        "type": "icon",
+        "symbols": ["→", "✓", "✓", "✓", "✓"],
+        "description": "箭头/对勾序列，流程图/步骤展示",
+        "tags": ["流程", "步骤", "验证"],
+        "max_depth": 1,
+        "preview_html": "<p>→ 第一步  → 第二步  → 完成</p>",
+    },
+    {
+        "id": "english-alpha",
+        "name": "英文字母",
+        "type": "english",
+        "symbols": ["A.", "B.", "C.", "D.", "E."],
+        "description": "英文字母序号，英文PPT/学术演示",
+        "tags": ["英文", "学术"],
+        "max_depth": 3,
+        "preview_html": "<p>A. First  B. Second  C. Third</p>",
+    },
+    {
+        "id": "english-roman",
+        "name": "罗马数字",
+        "type": "english",
+        "symbols": ["I.", "II.", "III.", "IV.", "V."],
+        "description": "罗马数字序号，正式演讲/典礼",
+        "tags": ["正式", "典礼", "学术"],
+        "max_depth": 3,
+        "preview_html": "<p>I. Prima  II. Secunda  III. Tertia</p>",
+    },
+    {
+        "id": "special-enclosed",
+        "name": "圈码数字",
+        "type": "special",
+        "symbols": ["①", "②", "③", "④", "⑤"],
+        "description": "圆形圈码，创意PPT/儿童教育",
+        "tags": ["创意", "教育", "儿童"],
+        "max_depth": 1,
+        "preview_html": "<p>① 第一项  ② 第二项  ③ 第三项</p>",
+    },
+    {
+        "id": "chinese-bracket",
+        "name": "中文括号()",
+        "type": "chinese",
+        "symbols": ["(1)", "(2)", "(3)", "(4)", "(5)"],
+        "description": "中文语境下的括号数字，简明报告",
+        "tags": ["简明", "报告"],
+        "max_depth": 2,
+        "preview_html": "<p>(1) 第一项  (2) 第二项</p>",
+    },
+    {
+        "id": "step-arrow",
+        "name": "步骤箭头链",
+        "type": "icon",
+        "symbols": ["▶", "▶", "▶", "▶", "▶"],
+        "description": "箭头串联步骤，流程图/时间线",
+        "tags": ["流程", "时间线", "步骤"],
+        "max_depth": 1,
+        "preview_html": "<p>▶ 开始 → ▶ 进行中 → ▶ 完成</p>",
+    },
+]
+
 
 class AssetItem(BaseModel):
     id: str
@@ -123,6 +247,21 @@ async def get_animations():
     return [AssetItem(id=a["id"], name=a["name"], category=a["category"]) for a in ANIMATIONS]
 
 
+@router.get("/numbering-styles", response_model=List[Dict[str, Any]])
+async def get_numbering_styles(
+    type: Optional[str] = None,
+    tags: Optional[str] = None,
+):
+    """获取序号样式列表，支持按类型和标签过滤"""
+    result = NUMBERING_STYLES
+    if type:
+        result = [s for s in result if s["type"] == type]
+    if tags:
+        tag_list = [t.strip() for t in tags.split(",")]
+        result = [s for s in result if any(t in s["tags"] for t in tag_list)]
+    return result
+
+
 @router.get("/all", response_model=Dict[str, List[AssetItem]])
 async def get_all_assets():
     """获取所有资产"""
@@ -132,4 +271,5 @@ async def get_all_assets():
         "layouts": [AssetItem(id=l["id"], name=l["name"], description=l["description"]) for l in LAYOUTS],
         "fonts": [AssetItem(id=f["id"], name=f["name"], category=f["category"], description=f["usage"]) for f in FONTS],
         "animations": [AssetItem(id=a["id"], name=a["name"], category=a["category"]) for a in ANIMATIONS],
+        "numbering_styles": NUMBERING_STYLES,
     }
