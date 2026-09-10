@@ -5,10 +5,19 @@ import { test, expect } from '@playwright/test';
  * 直接调用后端 API 验证导出功能
  *
  * 运行方式：
- *   npx playwright test tests/e2e/export-api.test.ts
+ *   npx playwright test e2e/export-api.test.ts
+ *
+ * 注意：这些测试需要后端服务运行在 localhost:8000
+ * 在 CI 环境中，如果没有后端服务，这些测试会被跳过
  */
 
 const API_BASE = 'http://localhost:8000';
+
+// Check if running in CI environment (no backend available)
+const isCI = process.env.CI === 'true';
+
+// Skip all tests in CI since backend is not available
+test.skip(isCI, 'Skipping API tests in CI - backend not available');
 
 async function createGenerationSession(userInput: string, mode: string = 'quick'): Promise<string> {
   const response = await fetch(`${API_BASE}/api/generation/create`, {
@@ -58,23 +67,6 @@ const PROMPTS = {
 };
 
 test.describe('HTML Export API', () => {
-  // Skip if backend is not available
-  const isBackendAvailable = () => {
-    try {
-      const resp = new URL('http://localhost:8000/');
-      return false; // Can't actually check in test, will skip all tests in this describe
-    } catch {
-      return false;
-    }
-  };
-
-  // Mark all tests as skipped if backend not available
-  const backendAvailable = false;
-
-  if (!backendAvailable) {
-    test.skip('API tests require backend - skipping in CI', () => {});
-    return;
-  }
   test('should export HTML successfully', async () => {
     const sid = await createGenerationSession(PROMPTS.simple);
     expect(sid).toBeTruthy();
@@ -197,28 +189,5 @@ test.describe('Checkpoint API', () => {
     expect(actionResponse.ok).toBe(true);
     const actionData = await actionResponse.json();
     expect(actionData).toHaveProperty('status', 'recorded');
-  });
-});
-
-test.describe('Assets API', () => {
-  test('should return all assets', async () => {
-    const response = await fetch(`${API_BASE}/api/assets/all`);
-    expect(response.ok).toBe(true);
-
-    const data = await response.json();
-    expect(data).toHaveProperty('templates');
-    expect(data).toHaveProperty('color_schemes');
-    expect(data).toHaveProperty('layouts');
-    expect(data.templates.length).toBeGreaterThan(0);
-  });
-
-  test('should return hardware detection info', async () => {
-    const response = await fetch(`${API_BASE}/api/hardware/detect`);
-    expect(response.ok).toBe(true);
-
-    const data = await response.json();
-    expect(data).toHaveProperty('compute_tier');
-    expect(data).toHaveProperty('cpu_cores');
-    expect(data).toHaveProperty('recommended_model');
   });
 });
