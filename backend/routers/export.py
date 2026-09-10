@@ -73,11 +73,11 @@ def _render_html_slides(slides: list[dict], title: str) -> str:
 
 
 def _write_export(filename: str, content: bytes) -> str:
-    """将导出文件写入磁盘并返回相对 URL。"""
+    """将导出文件写入磁盘并返回相对 URL（含 /api 前缀）。"""
     filepath = os.path.join(EXPORTS_DIR, filename)
     with open(filepath, "wb") as f:
         f.write(content)
-    return f"/exports/{filename}"
+    return f"/api/exports/{filename}"
 
 
 # ── HTML 导出 ────────────────────────────────────────────────────────────────
