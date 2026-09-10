@@ -75,6 +75,7 @@ E2E 测试: 13 通过 / 5 跳过 (无有效 sessionId)
 API 测试: 10/10 通过
 ESLint: 0 错误
 TypeScript: 0 错误
+覆盖率门控: >=60% (已强制执行)
 ```
 
 ## CI/CD 状态 ✅
@@ -97,6 +98,12 @@ TypeScript: 0 错误
 **测试结果**:
 - 单元测试: 140/140 通过 (93.57% 覆盖率)
 - E2E 测试: 13 passed, 13 skipped (API tests in CI)
+
+**CI 优化 (2026-09-10)**:
+- ✅ 移除重复的 `vitest run` 步骤（原运行两次，现仅一次）
+- ✅ 恢复覆盖率门控检查（>=60%，vitest 内置阈值强制）
+- ✅ 删除过时重复测试文件 `tests/e2e/export-api.test.ts`
+- ✅ 更新 README 项目结构（`e2e/` 路径正确）
 
 ---
 
@@ -131,4 +138,4 @@ TypeScript: 0 错误
 
 ---
 
-**最后更新**: 2026-09-10 20:30 CST by @Hermes
+**最后更新**: 2026-09-10 21:30 CST by @Claude (代码审查 & CI 修复)
