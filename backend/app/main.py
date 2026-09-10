@@ -10,20 +10,24 @@ import os
 from app.core.config import settings
 from app.core.hardware_detector import HardwareDetector
 from app.core.model_router import ModelRouter
+from app.db import init_db
 from app.api.routes import hardware, generation, checkpoints, assets, export
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
+    # 初始化数据库（创建表 + 种子数据）
+    await init_db()
+
     print(f"[云章] 启动中...")
     print(f"[云章] AI模型: {settings.agnes_model}")
-    
+
     hardware_profile = HardwareDetector.detect()
     print(f"[云章] 硬件等级: {hardware_profile.tier.value}")
-    
+
     yield
-    
+
     print("[云章] 服务关闭")
 
 

@@ -1,12 +1,32 @@
 """
 设计资产路由
 提供模板、配色、布局、字体、动效等资产查询接口
+支持 SQLite 持久化（序号样式 + 模板-序号关联）
 """
-from fastapi import APIRouter, HTTPException
+import json
+from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
+import aiosqlite
+
+from app.core.config import settings
 
 router = APIRouter()
+
+
+def _get_db():
+    """同步数据库连接（用于同步 CRUD 操作）"""
+    db_path = settings.database_url
+    # 解析 URL，兼容 sqlite+aiosqlite:// 和直接文件路径
+    if db_path.startswith("sqlite+aiosqlite:///"):
+        db_path = db_path.replace("sqlite+aiosqlite:///", "")
+    elif db_path.startswith("sqlite:///"):
+        db_path = db_path.replace("sqlite:///", "")
+    import sqlite3
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
 # ========== 内置资产数据 ==========
@@ -490,3 +510,202 @@ async def get_all_assets():
         "animations": [AssetItem(id=a["id"], name=a["name"], category=a["category"]) for a in ANIMATIONS],
         "numbering_styles": NUMBERING_STYLES,
     }
+
+
+# ========== 序号样式 CRUD（DB 持久化） ==========
+
+class NumberingStyleRequest(BaseModel):
+    id: str
+    name: str
+    type: str
+    symbols: List[str]
+    description: Optional[str] = None
+    tags: List[str] = []
+    max_depth: int = 1
+    preview_html: Optional[str] = None
+    is_system: bool = False
+
+
+@router.get("/numbering-styles/list", response_model=List[Dict[str, Any]])
+async def list_numbering_styles_db(
+    type: Optional[str] = None,
+    is_system: Optional[bool] = None,
+):
+    """从数据库列出序号样式"""
+    conn = _get_db()
+    try:
+        cursor = conn.execute("SELECT * FROM numbering_styles")
+        rows = cursor.fetchall()
+        result = [dict(r) for r in rows]
+        # 将 JSON 字符串字段解析为对象
+        for row in result:
+            if isinstance(row.get("symbols"), str):
+                try:
+                    row["symbols"] = json.loads(row["symbols"])
+                except Exception:
+                    pass
+            if isinstance(row.get("tags"), str):
+                try:
+                    row["tags"] = json.loads(row["tags"])
+                except Exception:
+                    pass
+            row["is_system"] = bool(row.get("is_system", False))
+        if type:
+            result = [r for r in result if r.get("type") == type]
+        if is_system is not None:
+            result = [r for r in result if r.get("is_system") == is_system]
+        return result
+    finally:
+        conn.close()
+
+
+@router.post("/numbering-styles", response_model=Dict[str, Any])
+async def create_numbering_style(style: NumberingStyleRequest):
+    """创建序号样式"""
+    conn = _get_db()
+    try:
+        # 检查 ID 是否已存在
+        row = conn.execute("SELECT id FROM numbering_styles WHERE id = ?", (style.id,)).fetchone()
+        if row:
+            raise HTTPException(status_code=409, detail=f"序号样式 ID '{style.id}' 已存在")
+        conn.execute(
+            """INSERT INTO numbering_styles
+               (id, name, type, symbols, description, tags, max_depth, preview_html, is_system)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                style.id, style.name, style.type,
+                json.dumps(style.symbols, ensure_ascii=False),
+                style.description, json.dumps(style.tags, ensure_ascii=False),
+                style.max_depth, style.preview_html, style.is_system,
+            ),
+        )
+        conn.commit()
+        return {"status": "created", "id": style.id}
+    finally:
+        conn.close()
+
+
+@router.put("/numbering-styles/{style_id}", response_model=Dict[str, Any])
+async def update_numbering_style(style_id: str, style: NumberingStyleRequest):
+    """更新序号样式"""
+    conn = _get_db()
+    try:
+        row = conn.execute("SELECT id FROM numbering_styles WHERE id = ?", (style_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="序号样式不存在")
+        conn.execute(
+            """UPDATE numbering_styles SET
+               name=?, type=?, symbols=?, description=?, tags=?, max_depth=?, preview_html=?, is_system=?
+               WHERE id=?""",
+            (
+                style.name, style.type,
+                json.dumps(style.symbols, ensure_ascii=False),
+                style.description, json.dumps(style.tags, ensure_ascii=False),
+                style.max_depth, style.preview_html, style.is_system,
+                style_id,
+            ),
+        )
+        conn.commit()
+        return {"status": "updated", "id": style_id}
+    finally:
+        conn.close()
+
+
+@router.delete("/numbering-styles/{style_id}", response_model=Dict[str, Any])
+async def delete_numbering_style(style_id: str):
+    """删除序号样式（仅允许删除非系统样式）"""
+    conn = _get_db()
+    try:
+        row = conn.execute(
+            "SELECT is_system FROM numbering_styles WHERE id = ?", (style_id,)
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="序号样式不存在")
+        if row[0]:
+            raise HTTPException(status_code=403, detail="系统内置序号样式不可删除")
+        conn.execute("DELETE FROM numbering_styles WHERE id = ?", (style_id,))
+        conn.commit()
+        return {"status": "deleted", "id": style_id}
+    finally:
+        conn.close()
+
+
+@router.get("/templates/list", response_model=List[Dict[str, Any]])
+async def list_templates_db():
+    """从数据库列出模板"""
+    conn = _get_db()
+    try:
+        cursor = conn.execute("SELECT * FROM templates")
+        rows = cursor.fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+@router.get("/templates/{template_id}/numbering")
+async def get_template_numbering(template_id: str):
+    """获取模板绑定的序号样式"""
+    conn = _get_db()
+    try:
+        row = conn.execute(
+            """SELECT tn.template_id, tn.numbering_id, tn.priority, ns.name, ns.type
+               FROM template_numbering tn
+               JOIN numbering_styles ns ON tn.numbering_id = ns.id
+               WHERE tn.template_id = ?
+               ORDER BY tn.priority""",
+            (template_id,),
+        ).fetchall()
+        return [dict(r) for r in row]
+    finally:
+        conn.close()
+
+
+@router.post("/templates/{template_id}/numbering/{numbering_id}")
+async def link_template_numbering(template_id: str, numbering_id: str, priority: int = 0):
+    """绑定模板与序号样式"""
+    conn = _get_db()
+    try:
+        # 验证模板和序号样式存在
+        t = conn.execute("SELECT id FROM templates WHERE id = ?", (template_id,)).fetchone()
+        n = conn.execute("SELECT id FROM numbering_styles WHERE id = ?", (numbering_id,)).fetchone()
+        if not t or not n:
+            raise HTTPException(status_code=404, detail="模板或序号样式不存在")
+        conn.execute(
+            """INSERT OR REPLACE INTO template_numbering (template_id, numbering_id, priority)
+               VALUES (?, ?, ?)""",
+            (template_id, numbering_id, priority),
+        )
+        # 同时更新 templates.default_numbering_id（优先级最高的作为默认）
+        conn.execute(
+            """UPDATE templates SET default_numbering_id = ?
+               WHERE id = ? AND (? = (SELECT MIN(priority) FROM template_numbering WHERE template_id = ?))""",
+            (numbering_id, template_id, priority, template_id),
+        )
+        conn.commit()
+        return {"status": "linked", "template_id": template_id, "numbering_id": numbering_id}
+    finally:
+        conn.close()
+
+
+@router.delete("/templates/{template_id}/numbering/{numbering_id}")
+async def unlink_template_numbering(template_id: str, numbering_id: str):
+    """解除模板与序号样式的绑定"""
+    conn = _get_db()
+    try:
+        conn.execute(
+            "DELETE FROM template_numbering WHERE template_id = ? AND numbering_id = ?",
+            (template_id, numbering_id),
+        )
+        # 如果解绑的是默认序号，清空 default_numbering_id
+        t = conn.execute(
+            "SELECT default_numbering_id FROM templates WHERE id = ?", (template_id,)
+        ).fetchone()
+        if t and t[0] == numbering_id:
+            conn.execute(
+                "UPDATE templates SET default_numbering_id = NULL WHERE id = ?",
+                (template_id,),
+            )
+        conn.commit()
+        return {"status": "unlinked"}
+    finally:
+        conn.close()
