@@ -43,3 +43,15 @@ next-env.d.ts
 # test results
 /test-results/
 /playwright-report/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+venv/
+
+# Backend exports (generated at runtime)
+backend/exports/
