@@ -36,7 +36,9 @@ async function createGenerationSession(userInput: string, mode: string = 'quick'
 }
 
 async function getSession(sessionId: string): Promise<Record<string, unknown>> {
-  const response = await fetch(`${API_BASE}/api/generation/session/${sessionId}`);
+  const response = await fetch(`${API_BASE}/api/generation/session/${sessionId}`, {
+    signal: AbortSignal.timeout(15_000),
+  });
   if (!response.ok) {
     throw new Error(`获取会话失败 (HTTP ${response.status})`);
   }
@@ -129,7 +131,9 @@ test.describe('HTML Export API', () => {
     const exportResult = await exportHTML(sid);
 
     // 验证导出的 HTML 文件可访问
-    const htmlResponse = await fetch(`${API_BASE}${exportResult.url}`);
+    const htmlResponse = await fetch(`${API_BASE}${exportResult.url}`, {
+      signal: AbortSignal.timeout(15_000),
+    });
     expect(htmlResponse.ok).toBe(true);
     const html = await htmlResponse.text();
     expect(html).toContain('<!DOCTYPE html>');
@@ -177,7 +181,9 @@ test.describe('PPTX Export API', () => {
     const exportResult = await exportPPTX(sid);
 
     // 验证导出的 PPTX 文件可访问
-    const pptxResponse = await fetch(`${API_BASE}${exportResult.url}`);
+    const pptxResponse = await fetch(`${API_BASE}${exportResult.url}`, {
+      signal: AbortSignal.timeout(15_000),
+    });
     expect(pptxResponse.ok).toBe(true);
     const buffer = await pptxResponse.arrayBuffer();
     // PPTX 文件应以 PK 开头（ZIP 格式）
@@ -201,7 +207,9 @@ test.describe('PDF Export API', () => {
     const exportResult = await exportPDF(sid);
 
     // 验证导出的 PDF 文件可访问
-    const pdfResponse = await fetch(`${API_BASE}${exportResult.url}`);
+    const pdfResponse = await fetch(`${API_BASE}${exportResult.url}`, {
+      signal: AbortSignal.timeout(15_000),
+    });
     expect(pdfResponse.ok).toBe(true);
     const buffer = await pdfResponse.arrayBuffer();
     // PDF 文件应以 %PDF 开头
@@ -226,7 +234,9 @@ test.describe('PNG Export API', () => {
     const exportResult = await exportPNG(sid);
 
     // 验证导出的 PNG 文件可访问
-    const pngResponse = await fetch(`${API_BASE}${exportResult.url}`);
+    const pngResponse = await fetch(`${API_BASE}${exportResult.url}`, {
+      signal: AbortSignal.timeout(15_000),
+    });
     expect(pngResponse.ok).toBe(true);
     const buffer = await pngResponse.arrayBuffer();
     // PNG 文件应以 PNG 签名开头
