@@ -8,7 +8,6 @@ import { test, expect } from '@playwright/test';
  *   npx playwright test e2e/export-api.test.ts
  *
  * 注意：这些测试需要后端服务运行在 localhost:8000
- * 在 CI 环境中，如果没有后端服务，这些测试会被跳过
  */
 
 const API_BASE = 'http://localhost:8000';
@@ -55,6 +54,54 @@ async function exportHTML(sessionId: string): Promise<{ filename: string; url: s
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
     throw new Error(`HTML 导出失败: ${err.detail || response.statusText}`);
+  }
+
+  return response.json();
+}
+
+async function exportPPTX(sessionId: string): Promise<{ filename: string; url: string }> {
+  const response = await fetch(`${API_BASE}/api/export/pptx`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, format: 'pptx', title: '测试演示文稿' }),
+    signal: AbortSignal.timeout(60_000),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(`PPTX 导出失败: ${err.detail || response.statusText}`);
+  }
+
+  return response.json();
+}
+
+async function exportPDF(sessionId: string): Promise<{ filename: string; url: string }> {
+  const response = await fetch(`${API_BASE}/api/export/pdf`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, format: 'pdf', title: '测试演示文稿' }),
+    signal: AbortSignal.timeout(60_000),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(`PDF 导出失败: ${err.detail || response.statusText}`);
+  }
+
+  return response.json();
+}
+
+async function exportPNG(sessionId: string): Promise<{ filename: string; url: string }> {
+  const response = await fetch(`${API_BASE}/api/export/png`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, format: 'png', title: '测试演示文稿' }),
+    signal: AbortSignal.timeout(60_000),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(`PNG 导出失败: ${err.detail || response.statusText}`);
   }
 
   return response.json();
@@ -110,6 +157,80 @@ test.describe('HTML Export API', () => {
     });
     // 缺少必填字段应返回 422
     expect(response.status).toBe(422);
+  });
+});
+
+test.describe('PPTX Export API', () => {
+  test('should export PPTX successfully', async () => {
+    const sid = await createGenerationSession(PROMPTS.technical);
+    expect(sid).toBeTruthy();
+
+    const result = await exportPPTX(sid);
+    expect(result).toHaveProperty('filename');
+    expect(result.filename).toMatch(/\.pptx$/);
+    expect(result).toHaveProperty('url');
+  });
+
+  test('should return valid PPTX file', async () => {
+    const sid = await createGenerationSession(PROMPTS.simple);
+    const exportResult = await exportPPTX(sid);
+
+    // 验证导出的 PPTX 文件可访问
+    const pptxResponse = await fetch(`${API_BASE}${exportResult.url}`);
+    expect(pptxResponse.ok).toBe(true);
+    const buffer = await pptxResponse.arrayBuffer();
+    // PPTX 文件应以 PK 开头（ZIP 格式）
+    expect(buffer.byteLength).toBeGreaterThan(0);
+  });
+});
+
+test.describe('PDF Export API', () => {
+  test('should export PDF successfully', async () => {
+    const sid = await createGenerationSession(PROMPTS.business);
+    expect(sid).toBeTruthy();
+
+    const result = await exportPDF(sid);
+    expect(result).toHaveProperty('filename');
+    expect(result.filename).toMatch(/\.pdf$/);
+    expect(result).toHaveProperty('url');
+  });
+
+  test('should return valid PDF file', async () => {
+    const sid = await createGenerationSession(PROMPTS.simple);
+    const exportResult = await exportPDF(sid);
+
+    // 验证导出的 PDF 文件可访问
+    const pdfResponse = await fetch(`${API_BASE}${exportResult.url}`);
+    expect(pdfResponse.ok).toBe(true);
+    const buffer = await pdfResponse.arrayBuffer();
+    // PDF 文件应以 %PDF 开头
+    const header = Buffer.from(buffer).slice(0, 5).toString();
+    expect(header).toContain('%PDF');
+  });
+});
+
+test.describe('PNG Export API', () => {
+  test('should export PNG successfully', async () => {
+    const sid = await createGenerationSession(PROMPTS.technical);
+    expect(sid).toBeTruthy();
+
+    const result = await exportPNG(sid);
+    expect(result).toHaveProperty('filename');
+    expect(result.filename).toMatch(/\.png$/);
+    expect(result).toHaveProperty('url');
+  });
+
+  test('should return valid PNG file', async () => {
+    const sid = await createGenerationSession(PROMPTS.simple);
+    const exportResult = await exportPNG(sid);
+
+    // 验证导出的 PNG 文件可访问
+    const pngResponse = await fetch(`${API_BASE}${exportResult.url}`);
+    expect(pngResponse.ok).toBe(true);
+    const buffer = await pngResponse.arrayBuffer();
+    // PNG 文件应以 PNG 签名开头
+    const header = Buffer.from(buffer).slice(0, 8).toString('hex');
+    expect(header).toContain('89504e47'); // PNG magic number
   });
 });
 

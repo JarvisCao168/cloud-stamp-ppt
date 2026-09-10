@@ -35,6 +35,23 @@ async function isBackendAvailable(): Promise<boolean> {
   }
 }
 
+async function createSession(userInput: string, mode: string = 'quick'): Promise<string> {
+  const response = await fetch('http://localhost:8000/api/generation/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_input: userInput, mode }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(`创建会话失败: ${err.detail || response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.session_id;
+}
+
 async function goToHomePage(page: Page): Promise<void> {
   await page.goto('/');
   // 等待输入框出现（页面加载完成标志）
@@ -92,268 +109,379 @@ async function waitForExportSection(page: Page): Promise<boolean> {
 }
 
 // ============================================================
-// 测试套件：页面基础
+// 全局 session ID（所有测试共享）
 // ============================================================
 
-test.describe('页面基础', () => {
-  test.beforeEach(async ({ page }) => {
-    await goToHomePage(page);
-  });
+let sessionId: string | null = null;
+let backendAvailable = false;
 
-  test('首页正确加载', async ({ page }) => {
-    await expect(page.locator('h1')).toContainText('演示文稿生成器');
-    await expect(page.getByText('AI 演示文稿生成器')).toBeVisible();
-  });
+test.describe.configure({ mode: 'serial' });
 
-  test('三种模式按钮可见且可点击', async ({ page }) => {
-    await expect(page.getByRole('button', { name: '极速模式' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '协作模式' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '掌控模式' })).toBeVisible();
-  });
-
-  test('初始状态显示空提示', async ({ page }) => {
-    await expect(page.getByText('输入主题后点击生成')).toBeVisible();
-  });
-});
-
-// ============================================================
-// 测试套件：模式选择
-// ============================================================
-
-test.describe('模式选择', () => {
-  test.beforeEach(async ({ page }) => {
-    await goToHomePage(page);
-  });
-
-  test('可以快速切换到极速模式', async ({ page }) => {
-    await selectMode(page, 'rapid');
-    await expect(page.getByText('极速模式')).toBeVisible();
-  });
-
-  test('可以切换到协作模式', async ({ page }) => {
-    await selectMode(page, 'collaborative');
-    await expect(page.getByText('协作模式')).toBeVisible();
-  });
-
-  test('可以切换到掌控模式', async ({ page }) => {
-    await selectMode(page, 'mastery');
-    await expect(page.getByText('掌控模式')).toBeVisible();
-  });
-});
-
-// ============================================================
-// 测试套件：生成流程
-// ============================================================
-
-test.describe('生成流程', () => {
-  test.beforeEach(async ({ page }) => {
-    await goToHomePage(page);
-  });
-
-  test('空提示时生成按钮仍可见（但点击后应显示错误）', async ({ page }) => {
-    await selectMode(page, 'rapid');
-    await clickGenerate(page);
-    // 无 prompt 时仍应进入 loading → error 状态
-    await expect(page.locator('[aria-label="预览区域"]')).toBeVisible({ timeout: 10000 });
-  });
-
-  test('填写提示词后生成按钮可点击', async ({ page }) => {
-    await selectMode(page, 'rapid');
-    await enterPrompt(page, PROMPTS.rapid);
-    await expect(page.getByRole('button', { name: /生成演示文稿/ })).toBeEnabled();
-  });
-
-  test('生成过程中显示加载状态', async ({ page }) => {
-    await selectMode(page, 'rapid');
-    await enterPrompt(page, PROMPTS.rapid);
-    await clickGenerate(page);
-    // 加载中应显示 LoadingState 组件
-    await expect(page.locator('[aria-label="预览区域"]')).toBeVisible();
-  });
-
-  test('生成完成后预览区域可见', async ({ page }) => {
-    await selectMode(page, 'rapid');
-    await enterPrompt(page, PROMPTS.rapid);
-    await clickGenerate(page);
-
-    const success = await waitForGeneration(page);
-    // 无论后端是否可用，预览区域都应存在
-    await expect(page.locator('[aria-label="预览区域"]')).toBeVisible();
-
-    if (success) {
-      // 后端可用时，应看到幻灯片内容
-      await expect(page.locator('.reveal')).toBeVisible();
+test.describe('E2E 导出功能测试', () => {
+  test.beforeAll(async () => {
+    backendAvailable = await isBackendAvailable();
+    console.log(`Backend available: ${backendAvailable}`);
+    
+    if (backendAvailable) {
+      try {
+        sessionId = await createSession(PROMPTS.rapid, 'quick');
+        console.log(`Created session: ${sessionId}`);
+      } catch (error) {
+        console.error('Failed to create session:', error);
+        sessionId = null;
+      }
     }
   });
-});
 
-// ============================================================
-// 测试套件：导出功能
-// ============================================================
+  test.describe('页面基础', () => {
+    test.beforeEach(async ({ page }) => {
+      await goToHomePage(page);
+    });
 
-test.describe('导出功能', () => {
-  test.beforeEach(async ({ page }) => {
-    await goToHomePage(page);
+    test('首页正确加载', async ({ page }) => {
+      await expect(page.locator('h1')).toContainText('演示文稿生成器');
+      await expect(page.getByText('AI 演示文稿生成器')).toBeVisible();
+    });
+
+    test('三种模式按钮可见且可点击', async ({ page }) => {
+      await expect(page.getByRole('button', { name: '极速模式' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '协作模式' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '掌控模式' })).toBeVisible();
+    });
+
+    test('初始状态显示空提示', async ({ page }) => {
+      await expect(page.getByText('输入主题后点击生成')).toBeVisible();
+    });
+  });
+
+  test.describe('模式选择', () => {
+    test.beforeEach(async ({ page }) => {
+      await goToHomePage(page);
+    });
+
+    test('可以快速切换到极速模式', async ({ page }) => {
+      await selectMode(page, 'rapid');
+      await expect(page.getByText('极速模式')).toBeVisible();
+    });
+
+    test('可以切换到协作模式', async ({ page }) => {
+      await selectMode(page, 'collaborative');
+      await expect(page.getByText('协作模式')).toBeVisible();
+    });
+
+    test('可以切换到掌控模式', async ({ page }) => {
+      await selectMode(page, 'mastery');
+      await expect(page.getByText('掌控模式')).toBeVisible();
+    });
+  });
+
+  test.describe('生成流程', () => {
+    test.beforeEach(async ({ page }) => {
+      await goToHomePage(page);
+    });
+
+    test('空提示时生成按钮仍可见（但点击后应显示错误）', async ({ page }) => {
+      await selectMode(page, 'rapid');
+      await clickGenerate(page);
+      // 无 prompt 时仍应进入 loading → error 状态
+      await expect(page.locator('[aria-label="预览区域"]')).toBeVisible({ timeout: 10000 });
+    });
+
+    test('填写提示词后生成按钮可点击', async ({ page }) => {
+      await selectMode(page, 'rapid');
+      await enterPrompt(page, PROMPTS.rapid);
+      await expect(page.getByRole('button', { name: /生成演示文稿/ })).toBeEnabled();
+    });
+
+    test('生成过程中显示加载状态', async ({ page }) => {
+      await selectMode(page, 'rapid');
+      await enterPrompt(page, PROMPTS.rapid);
+      await clickGenerate(page);
+      // 加载中应显示 LoadingState 组件
+      await expect(page.locator('[aria-label="预览区域"]')).toBeVisible();
+    });
+
+    test('生成完成后预览区域可见', async ({ page }) => {
+      await selectMode(page, 'rapid');
+      await enterPrompt(page, PROMPTS.rapid);
+      await clickGenerate(page);
+
+      const success = await waitForGeneration(page);
+      // 无论后端是否可用，预览区域都应存在
+      await expect(page.locator('[aria-label="预览区域"]')).toBeVisible();
+
+      if (success) {
+        // 后端可用时，应看到幻灯片内容
+        await expect(page.locator('.reveal')).toBeVisible();
+      }
+    });
+  });
+
+  test.describe('导出功能', () => {
+    test.beforeEach(async ({ page }) => {
+      await goToHomePage(page);
+    });
+
+    // ------------------------------------------------------------
+    // 基础 UI 测试（不依赖后端）
+    // ------------------------------------------------------------
+
+    test('生成成功后显示导出区域', async ({ page }) => {
+      await selectMode(page, 'rapid');
+      await enterPrompt(page, PROMPTS.rapid);
+      await clickGenerate(page);
+      await waitForGeneration(page);
+
+      const hasExport = await waitForExportSection(page);
+      // 如果后端不可用（无 sessionId），导出区域不会出现——这是预期行为
+      if (hasExport) {
+        await expect(page.locator('[aria-label="导出区域"]')).toBeVisible();
+      }
+    });
+
+    test('导出按钮包含所有四种格式', async ({ page }) => {
+      await selectMode(page, 'rapid');
+      await enterPrompt(page, PROMPTS.rapid);
+      await clickGenerate(page);
+      await waitForGeneration(page);
+
+      const hasExport = await waitForExportSection(page);
+      if (!hasExport) {
+        test.skip(); // 无后端时跳过
+      }
+
+      await expect(page.getByRole('button', { name: 'HTML' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'PPTX' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'PDF' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'PNG' })).toBeVisible();
+    });
+
+    test('点击导出按钮显示加载状态', async ({ page }) => {
+      await selectMode(page, 'rapid');
+      await enterPrompt(page, PROMPTS.rapid);
+      await clickGenerate(page);
+      await waitForGeneration(page);
+
+      const hasExport = await waitForExportSection(page);
+      if (!hasExport) {
+        test.skip();
+      }
+
+      await page.getByRole('button', { name: 'HTML' }).click();
+      await expect(page.getByText('导出中...')).toBeVisible();
+    });
+
+    test('导出失败显示错误提示', async ({ page }) => {
+      await selectMode(page, 'rapid');
+      await enterPrompt(page, PROMPTS.rapid);
+      await clickGenerate(page);
+      await waitForGeneration(page);
+
+      const hasExport = await waitForExportSection(page);
+      if (!hasExport) {
+        test.skip();
+      }
+
+      // 点击 PPTX 导出（若后端未运行，应显示错误）
+      await page.getByRole('button', { name: 'PPTX' }).click();
+
+      // 等待错误或成功状态（最多 10s）
+      await expect(
+        page.locator('[role="alert"], .bg-red-50, .reveal')
+      ).toBeVisible({ timeout: 10000 });
+    });
+
+    // ------------------------------------------------------------
+    // HTML 导出专项测试（客户端降级，不依赖后端）
+    // ------------------------------------------------------------
+
+    test('HTML 导出格式存在且可点击', async ({ page }) => {
+      // HTML 是纯客户端导出，只要有 slides 数据即可触发
+      await selectMode(page, 'rapid');
+      await enterPrompt(page, PROMPTS.rapid);
+      await clickGenerate(page);
+      await waitForGeneration(page);
+
+      const hasExport = await waitForExportSection(page);
+      if (!hasExport) {
+        test.skip('后端未运行，无法获取 sessionId，跳过 HTML 导出测试');
+      }
+
+      await page.getByRole('button', { name: 'HTML' }).click();
+      // 导出中 → 应触发实际下载或展示
+      await expect(page.getByText('导出中...')).toBeVisible();
+    });
+
+    test('四种导出格式的按钮排列正确', async ({ page }) => {
+      await selectMode(page, 'rapid');
+      await enterPrompt(page, PROMPTS.rapid);
+      await clickGenerate(page);
+      await waitForGeneration(page);
+
+      const hasExport = await waitForExportSection(page);
+      if (!hasExport) {
+        test.skip();
+      }
+
+      const buttons = page.locator('[aria-label^="导出为"]');
+      await expect(buttons).toHaveCount(4);
+
+      const expectedNames = ['HTML', 'PPTX', 'PDF', 'PNG'];
+      for (const name of expectedNames) {
+        await expect(page.getByRole('button', { name })).toBeVisible();
+      }
+    });
+  });
+
+  test.describe('掌控模式检查点', () => {
+    test.beforeEach(async ({ page }) => {
+      await goToHomePage(page);
+    });
+
+    test('掌控模式生成后显示检查点面板', async ({ page }) => {
+      await selectMode(page, 'mastery');
+      await enterPrompt(page, PROMPTS.mastery);
+      await clickGenerate(page);
+      await waitForGeneration(page);
+
+      // CheckpointPanel 在 mastery 模式下且 checkpoints.size > 0 时渲染
+      // 若无后端，不会显示；有后端时应可见
+      const checkpointPanel = page.locator('[data-testid="checkpoint-panel"]');
+      const panelVisible = await checkpointPanel.isVisible().catch(() => false);
+
+      if (panelVisible) {
+        await expect(checkpointPanel).toBeVisible();
+      }
+    });
+  });
+
+  test.describe('重新生成', () => {
+    test.beforeEach(async ({ page }) => {
+      await goToHomePage(page);
+    });
+
+    test('生成失败后重试按钮可用', async ({ page }) => {
+      await selectMode(page, 'rapid');
+      await enterPrompt(page, PROMPTS.rapid);
+      await clickGenerate(page);
+      await waitForGeneration(page);
+
+      // 无论成功或失败，"重新生成"按钮在 success 状态下出现
+      const retryBtn = page.getByRole('button', { name: '重新生成' });
+      const isRetryVisible = await retryBtn.isVisible().catch(() => false);
+
+      if (isRetryVisible) {
+        await expect(retryBtn).toBeEnabled();
+      }
+    });
   });
 
   // ------------------------------------------------------------
-  // 基础 UI 测试（不依赖后端）
+  // 完整端到端导出流程测试（需要有效 sessionId）
   // ------------------------------------------------------------
 
-  test('生成成功后显示导出区域', async ({ page }) => {
-    await selectMode(page, 'rapid');
-    await enterPrompt(page, PROMPTS.rapid);
-    await clickGenerate(page);
-    await waitForGeneration(page);
+  test.describe('完整导出流程', () => {
+    test('HTML 导出完整流程', async ({ page }) => {
+      if (!backendAvailable || !sessionId) {
+        test.skip();
+        return;
+      }
 
-    const hasExport = await waitForExportSection(page);
-    // 如果后端不可用（无 sessionId），导出区域不会出现——这是预期行为
-    if (hasExport) {
-      await expect(page.locator('[aria-label="导出区域"]')).toBeVisible();
-    }
-  });
+      await goToHomePage(page);
+      await selectMode(page, 'rapid');
+      
+      // 手动输入与后端会话相同的 prompt
+      await enterPrompt(page, PROMPTS.rapid);
+      await clickGenerate(page);
+      
+      // 等待生成完成
+      const success = await waitForGeneration(page);
+      expect(success).toBe(true);
+      
+      // 等待导出区域出现
+      const hasExport = await waitForExportSection(page);
+      expect(hasExport).toBe(true);
+      
+      // 点击 HTML 导出
+      await page.getByRole('button', { name: 'HTML' }).click();
+      
+      // 等待导出完成（下载或成功提示）
+      await expect(page.getByText('导出成功')).toBeVisible({ timeout: 30000 });
+    });
 
-  test('导出按钮包含所有四种格式', async ({ page }) => {
-    await selectMode(page, 'rapid');
-    await enterPrompt(page, PROMPTS.rapid);
-    await clickGenerate(page);
-    await waitForGeneration(page);
+    test('PPTX 导出完整流程', async ({ page }) => {
+      if (!backendAvailable || !sessionId) {
+        test.skip();
+        return;
+      }
 
-    const hasExport = await waitForExportSection(page);
-    if (!hasExport) {
-      test.skip(); // 无后端时跳过
-    }
+      await goToHomePage(page);
+      await selectMode(page, 'rapid');
+      await enterPrompt(page, PROMPTS.rapid);
+      await clickGenerate(page);
+      await waitForGeneration(page);
+      
+      const hasExport = await waitForExportSection(page);
+      if (!hasExport) {
+        test.skip();
+        return;
+      }
+      
+      // 点击 PPTX 导出
+      await page.getByRole('button', { name: 'PPTX' }).click();
+      
+      // 等待导出完成
+      await expect(page.getByText('导出成功')).toBeVisible({ timeout: 30000 });
+    });
 
-    await expect(page.getByRole('button', { name: 'HTML' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'PPTX' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'PDF' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'PNG' })).toBeVisible();
-  });
+    test('PDF 导出完整流程', async ({ page }) => {
+      if (!backendAvailable || !sessionId) {
+        test.skip();
+        return;
+      }
 
-  test('点击导出按钮显示加载状态', async ({ page }) => {
-    await selectMode(page, 'rapid');
-    await enterPrompt(page, PROMPTS.rapid);
-    await clickGenerate(page);
-    await waitForGeneration(page);
+      await goToHomePage(page);
+      await selectMode(page, 'rapid');
+      await enterPrompt(page, PROMPTS.rapid);
+      await clickGenerate(page);
+      await waitForGeneration(page);
+      
+      const hasExport = await waitForExportSection(page);
+      if (!hasExport) {
+        test.skip();
+        return;
+      }
+      
+      // 点击 PDF 导出
+      await page.getByRole('button', { name: 'PDF' }).click();
+      
+      // 等待导出完成
+      await expect(page.getByText('导出成功')).toBeVisible({ timeout: 30000 });
+    });
 
-    const hasExport = await waitForExportSection(page);
-    if (!hasExport) {
-      test.skip();
-    }
+    test('PNG 导出完整流程', async ({ page }) => {
+      if (!backendAvailable || !sessionId) {
+        test.skip();
+        return;
+      }
 
-    await page.getByRole('button', { name: 'HTML' }).click();
-    await expect(page.getByText('导出中...')).toBeVisible();
-  });
-
-  test('导出失败显示错误提示', async ({ page }) => {
-    await selectMode(page, 'rapid');
-    await enterPrompt(page, PROMPTS.rapid);
-    await clickGenerate(page);
-    await waitForGeneration(page);
-
-    const hasExport = await waitForExportSection(page);
-    if (!hasExport) {
-      test.skip();
-    }
-
-    // 点击 PPTX 导出（若后端未运行，应显示错误）
-    await page.getByRole('button', { name: 'PPTX' }).click();
-
-    // 等待错误或成功状态（最多 10s）
-    await expect(
-      page.locator('[role="alert"], .bg-red-50, .reveal')
-    ).toBeVisible({ timeout: 10000 });
-  });
-
-  // ------------------------------------------------------------
-  // HTML 导出专项测试（客户端降级，不依赖后端）
-  // ------------------------------------------------------------
-
-  test('HTML 导出格式存在且可点击', async ({ page }) => {
-    // HTML 是纯客户端导出，只要有 slides 数据即可触发
-    await selectMode(page, 'rapid');
-    await enterPrompt(page, PROMPTS.rapid);
-    await clickGenerate(page);
-    await waitForGeneration(page);
-
-    const hasExport = await waitForExportSection(page);
-    if (!hasExport) {
-      test.skip('后端未运行，无法获取 sessionId，跳过 HTML 导出测试');
-    }
-
-    await page.getByRole('button', { name: 'HTML' }).click();
-    // 导出中 → 应触发实际下载或展示
-    await expect(page.getByText('导出中...')).toBeVisible();
-  });
-
-  test('四种导出格式的按钮排列正确', async ({ page }) => {
-    await selectMode(page, 'rapid');
-    await enterPrompt(page, PROMPTS.rapid);
-    await clickGenerate(page);
-    await waitForGeneration(page);
-
-    const hasExport = await waitForExportSection(page);
-    if (!hasExport) {
-      test.skip();
-    }
-
-    const buttons = page.locator('[aria-label^="导出为"]');
-    await expect(buttons).toHaveCount(4);
-
-    const expectedNames = ['HTML', 'PPTX', 'PDF', 'PNG'];
-    for (const name of expectedNames) {
-      await expect(page.getByRole('button', { name })).toBeVisible();
-    }
-  });
-});
-
-// ============================================================
-// 测试套件：掌控模式检查点
-// ============================================================
-
-test.describe('掌控模式检查点', () => {
-  test.beforeEach(async ({ page }) => {
-    await goToHomePage(page);
-  });
-
-  test('掌控模式生成后显示检查点面板', async ({ page }) => {
-    await selectMode(page, 'mastery');
-    await enterPrompt(page, PROMPTS.mastery);
-    await clickGenerate(page);
-    await waitForGeneration(page);
-
-    // CheckpointPanel 在 mastery 模式下且 checkpoints.size > 0 时渲染
-    // 若无后端，不会显示；有后端时应可见
-    const checkpointPanel = page.locator('[data-testid="checkpoint-panel"]');
-    const panelVisible = await checkpointPanel.isVisible().catch(() => false);
-
-    if (panelVisible) {
-      await expect(checkpointPanel).toBeVisible();
-    }
-  });
-});
-
-// ============================================================
-// 测试套件：重新生成
-// ============================================================
-
-test.describe('重新生成', () => {
-  test.beforeEach(async ({ page }) => {
-    await goToHomePage(page);
-  });
-
-  test('生成失败后重试按钮可用', async ({ page }) => {
-    await selectMode(page, 'rapid');
-    await enterPrompt(page, PROMPTS.rapid);
-    await clickGenerate(page);
-    await waitForGeneration(page);
-
-    // 无论成功或失败，"重新生成"按钮在 success 状态下出现
-    const retryBtn = page.getByRole('button', { name: '重新生成' });
-    const isRetryVisible = await retryBtn.isVisible().catch(() => false);
-
-    if (isRetryVisible) {
-      await expect(retryBtn).toBeEnabled();
-    }
+      await goToHomePage(page);
+      await selectMode(page, 'rapid');
+      await enterPrompt(page, PROMPTS.rapid);
+      await clickGenerate(page);
+      await waitForGeneration(page);
+      
+      const hasExport = await waitForExportSection(page);
+      if (!hasExport) {
+        test.skip();
+        return;
+      }
+      
+      // 点击 PNG 导出
+      await page.getByRole('button', { name: 'PNG' }).click();
+      
+      // 等待导出完成
+      await expect(page.getByText('导出成功')).toBeVisible({ timeout: 30000 });
+    });
   });
 });
