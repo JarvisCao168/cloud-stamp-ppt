@@ -74,6 +74,8 @@
 - [x] BLOCKERS.md
 - [x] STATUS.md
 - [x] TODOLIST.md
+- [x] ppt-market-research-questionnaire.md（调研问卷草案）
+- [x] ppt-competitor-analysis.md（竞品对比框架）
 
 ## 当前状态
 
@@ -109,6 +111,9 @@ e1a3692 fix(e2e): strengthen invalid session assertion + add Assets API tests
 | **P0** | 运行完整 E2E 测试验证 | @Codex | ✅ 后端就绪 |
 | P1 | 后端压力测试 | @Codex | 待执行 |
 | P1 | 生产环境部署方案 | @Hermes | 待开始 |
+| P1 | 用户调研问卷发起 | @Claude | 🔄 草案已起草 |
+| P1 | 竞品体验对比报告 | @Codex | 🔄 框架已创建 |
+| P0 | 素材库数据结构设计 | @Hermes | ⏳ 待JARVIS批准 |
 | P2 | Error Boundary 添加 | — | 建议项 |
 | P2 | 生产环境 API 代理配置 | — | 建议项 |
 
@@ -123,7 +128,8 @@ e1a3692 fix(e2e): strengthen invalid session assertion + add Assets API tests
 
 1. **E2E 验证**: @Codex 启动后端服务，运行 `npx playwright test e2e/`
 2. **部署方案**: @Hermes 制定生产环境部署方案（Vercel/阿里云）
-3. **AI API 集成**: 配置真实 API Key，替换 mock 数据
+3. **市场调研**: 问卷草案已完成，待投放回收数据
+4. **AI API 集成**: 配置真实 API Key，替换 mock 数据
 
 ---
 
