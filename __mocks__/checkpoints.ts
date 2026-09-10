@@ -1,0 +1,1 @@
+export const checkpoints = new Map(); export const saveCheckpoint = vi.fn(); export const loadCheckpoint = vi.fn(); export const clearCheckpoint = vi.fn(); export const clearAllCheckpoints = vi.fn(); 
