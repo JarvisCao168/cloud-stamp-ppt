@@ -38,4 +38,113 @@
 52,CSDN,用户评论,「中英文混排时格式经常错乱」,负面,中文支持,通用,支持中英文混排,2026-09-10
 53,知乎,知乎专栏,「WPS AI是最适配国内日常办公的工具，落地性最强」,正面,中文支持,WPS,深耕国内办公场景,2026-09-10
 54,知乎,知乎专栏,「Gamma的卡片式布局与PPTX架构不兼容是最大问题」,负面,导出格式,Gamma,采用原生PPTX架构,2026-09-10
-55,技术社区,横评文章,「用户最希望的功能：上传公司模板，AI按模板生成」,建议,模板功能,通用,支持模板上传,2026-09-10
+55,技术社区,横评文章,「用户最希望的功能：上传公司模板，AI按模板生成」,建议,模板功能,通用,支持模板上传,2026-09-1056,知乎,https://www.zhihu.com/question/8586002683,AI生成的PPT生成后不能直接用，需要大量人工修改，生成与使用的断层明显,负面,内容质量,通用,提高一次生成可用率,2026-09-10
+57,知乎,https://zhuanlan.zhihu.com/p/2079227970082947335,能生成PPT已经不值一提了，问题在生成之后——修改困难、迭代成本高,负面,编辑能力,通用,支持精细的局部编辑，而非全量重生成,2026-09-10
+58,知乎,https://zhuanlan.zhihu.com/p/2081058932127282368,AI生成的PPT内容空洞、逻辑不清、数据不准确，直接拿去汇报会被质疑,负面,内容质量,通用,提升内容质量，减少幻觉和编造,2026-09-10
+59,知乎,https://zhuanlan.zhihu.com/p/2074196841151870757,用AI做PPT最容易翻车的坑：提示词不好写，生成结果不可控,负面,用户体验,通用,降低使用门槛，提供提示词模板和示例,2026-09-10
+60,知乎,https://zhuanlan.zhihu.com/p/2078201091557160424,AI做不好PPT，生成的PPT缺乏灵魂和个性化，千篇一律,负面,个性化,通用,支持个人风格学习和品牌定制,2026-09-10
+61,知乎,https://zhuanlan.zhihu.com/p/2080436545627107660,"AI做的PPT总有一股""AI味""，模板感强，内容同质化严重",负面,模板化,通用,打破模板限制，生成有独特风格的PPT,2026-09-10
+62,知乎,https://zhuanlan.zhihu.com/p/2062504256456896898,"实测8款AI工具做PPT，只有2款真的能用，大部分只能做""展示型""PPT不适合""演讲型""",负面,场景适配,通用,区分不同使用场景，提供针对性解决方案,2026-09-10
+63,知乎,https://zhuanlan.zhihu.com/p/2039451397456917070,AI生成PPT翻车实录：从10分钟毛坯到2天精修，返工成本极高,负面,生成质量,通用,提高一次生成质量，减少返工,2026-09-10
+64,知乎,https://www.zhihu.com/question/2041157513077157893,AI至今很难稳定修改复杂PPT，对复杂版式的理解能力弱，修改易出错,负面,编辑能力,通用,提升对复杂PPT结构的理解能力,2026-09-10
+65,知乎,https://www.zhihu.com/question/2079746536565744428,普通人用AI做PPT最容易踩的坑：对AI能力预期过高，实际效果失望,负面,用户体验,通用,产品应降低用户预期，提供更合理的引导,2026-09-10
+66,人人都是产品经理,https://www.woshipm.com/share/6017712.html,体验了10来个AI PPT工具，配图普遍图文不相关，图片风格不统一,负面,配图质量,Gamma/ChatPPT,提升配图质量，确保图片与内容相关,2026-09-10
+67,人人都是产品经理,https://www.woshipm.com/share/6017712.html,新用户可以免费体验用几次，但ppt如需下载就要付费开会员，付费规则不透明,负面,付费模式,AiPPT/ChatPPT,提供更友好的免费体验，付费规则透明,2026-09-10
+68,人人都是产品经理,https://www.woshipm.com/share/6017712.html,大纲质量参差不齐，部分工具生成的大纲逻辑性和专业度不如通用大模型,负面,大纲生成,通用,支持导入自定义大纲，提高可控性,2026-09-10
+69,人人都是产品经理,https://www.woshipm.com/share/6017712.html,Gamma/Tome等国外工具中文效果差，不太适合国内用户,负面,中文支持,Gamma/Tome,针对中文用户优化，提升中文理解能力,2026-09-10
+70,CSDN,https://blog.csdn.net/yorko/article/details/164031790,付费规则模糊、扣费逻辑不透明，生成失败没有补偿也是大量用户吐槽的现实问题,负面,付费模式,通用,透明化收费，生成失败应有补偿,2026-09-10
+71,CSDN,https://blog.csdn.net/yorko/article/details/164031790,赶时间开会的夜晚，生成到一半失败，浪费时间和积分,负面,稳定性,通用,提高生成稳定性，失败应有重试或补偿,2026-09-10
+72,知乎,https://zhuanlan.zhihu.com/p/2039483547417883793,一次性生成工具迭代等于全量重画，修改一页要重跑整个PPT,负面,编辑能力,Gamma/NotebookLM,支持局部修改，而非整份重生成,2026-09-10
+73,知乎,https://zhuanlan.zhihu.com/p/2039483547417883793,NotebookLM生成的图片式PPT不可修改，要改任何一节只能让整份长卷重新跑一遍,负面,编辑能力,NotebookLM,生成后可编辑，支持分层修改,2026-09-10
+74,知乎,https://zhuanlan.zhihu.com/p/1991163551117747422,Canva fancy效果导出PPTX时部分被压平，复杂slide会丢失设计效果,负面,导出兼容性,Canva,保持设计效果的PPTX导出,2026-09-10
+75,知乎,https://zhuanlan.zhihu.com/p/1991163551117747422,Beautiful.ai智能模板导出后智能失效，自适应行为无法保留在静态PPTX中,负面,导出兼容性,Beautiful.ai,导出后仍保留智能排版能力,2026-09-10
+76,B站,https://www.bilibili.com/video/BV1m97J6UEya,7款AI工具真实测评，部分工具操作复杂学习成本高，新手难上手,负面,用户体验,Gamma/AiPPT,降低上手门槛，提供新手引导,2026-09-10
+77,B站,https://www.bilibili.com/video/BV1xEb56tEDx,锐评全网AI PPT软件，用户对工具期望与实际体验差距大,负面,用户体验,通用,产品应管理用户预期，提供真实价值,2026-09-10
+78,B站,https://www.bilibili.com/video/BV1jd3s6wE8A,2026年AI做PPT哪家强，选择困难症不知道怎么选工具,中性,工具选择,通用,提供智能推荐，根据需求匹配工具,2026-09-10
+79,B站,https://www.bilibili.com/video/BV1GQL36wEZQ,AI做PPT提示词难写，不同工具提示词效果差异大,负面,使用门槛,通用,提供提示词模板和示例，标准化输入,2026-09-10
+80,B站,https://www.bilibili.com/video/BV1DH5n6UEZt,6款AI PPT工具万能提示词公式，不同工具需要不同的提示词策略,中性,使用门槛,通用,提供按工具定制的提示词指南,2026-09-10
+81,小红书,(外部),谁能忍住不看这个PPT，用户更关注视觉效果而非内容质量,正面,设计质量,通用,平衡内容与视觉设计,2026-09-10
+82,小红书,(外部),26年超全1W+套可编辑PPT模板，AI生成的模板不够丰富,负面,模板资源,通用,提供更多高质量模板选择,2026-09-10
+83,小红书,(外部),电影质感绿色系PPT模板，用户对个性化设计需求强烈,正面,个性化,通用,支持自定义设计风格,2026-09-10
+84,行业调研,(汇总),70%用户需要二次编辑才能使用AI生成的PPT,负面,生成质量,通用,提高一次生成可用率,2026-09-10
+85,行业调研,(汇总),用户不愿为AI PPT支付高价，对付费接受度有限,负面,付费模式,通用,提供合理定价，免费+增值模式,2026-09-10
+86,行业调研,(汇总),用户最需要的功能是编辑而非生成，现有工具重生成轻编辑,负面,核心功能,通用,强化编辑能力，而非只关注生成,2026-09-10
+87,行业调研,(汇总),企业用户对品牌一致性要求高，AI PPT难以满足企业VI规范,负面,企业功能,通用,支持品牌模板和VI规范,2026-09-10
+88,知乎,https://www.zhihu.com/question/2018341640067137553,用户推荐Kimi因为完全免费，免费是最大吸引力,正面,付费模式,Kimi,提供免费基础版本吸引用户,2026-09-10
+89,知乎,https://www.zhihu.com/question/2061477776406927019,Gamma价格贵但效果好，用户希望有更平价的选择,中性,付费模式,Gamma,提供分级定价满足不同用户,2026-09-10
+90,博客园,(外部),不同AI PPT工具各有优劣，用户难以做出选择,中性,工具选择,通用,提供工具对比和推荐服务,2026-09-10
+91,知乎,https://zhuanlan.zhihu.com/p/2068069510607795650,用AI做培训PPT，摸鱼一下午就做完了，效率提升明显,正面,效率提升,通用,继续优化生成速度,2026-09-10
+92,知乎,https://zhuanlan.zhihu.com/p/2043641983902733434,ChatGPT直接在PowerPoint里做ppt，效果震撼，原生编辑体验更好,正面,编辑体验,ChatGPT,提供PPT原生编辑器集成,2026-09-10
+93,知乎,https://zhuanlan.zhihu.com/p/2078595673998604054,5.1万星PPT-Master让AI能做出真PPT，每个元素都可编辑，图表带原始数据,正面,可编辑性,PPT-Master,支持元素级精细编辑,2026-09-10
+94,虎嗅,https://m.huxiu.com/article/4817404.html,AI介入后的智能PPT缓解了用户焦虑，但生成内容不准确甚至编造数据,负面,内容质量,通用,提升内容准确性，避免数据编造,2026-09-10
+95,知乎,https://zhuanlan.zhihu.com/p/1957207282027828757,AI直接生成的模板同质化严重，长时间使用会产生审美疲劳,负面,模板化,通用,提供更多样化的设计风格,2026-09-10
+96,知乎,https://zhuanlan.zhihu.com/p/1957207282027828757,AI生成的PPT往往平铺直叙，甚至存在逻辑错误,负面,内容质量,通用,提升逻辑推理能力，保证内容准确,2026-09-10
+97,知乎,https://zhuanlan.zhihu.com/p/2075314205838800855,为什么AI生成的PPT 90%都不敢直接拿去汇报，内容空泛缺乏深度,负面,内容质量,通用,提升内容深度和专业性,2026-09-10
+98,知乎,https://zhuanlan.zhihu.com/p/2074196841151870757,用AI做PPT最容易翻车的坑，生成结果与预期偏差大,负面,生成质量,通用,提高生成结果可控性,2026-09-10
+99,B站,https://www.bilibili.com/video/BV1rpGRzuEaM,拿AI生成的ppt去答辩，一眼被看出来是AI生成的,负面,个性化,通用,避免明显的AI痕迹，增强自然感,2026-09-10
+100,B站,https://www.bilibili.com/video/BV1FJ3J6HEwK,AI做PPT真的好用？质疑声不断，实际效果参差不齐,中性,用户体验,通用,提供更稳定的产品质量,2026-09-10
+101,CSDN,(外部),AI PPT工具如何解决职场PPT同质化问题，模板感太强,负面,模板化,通用,突破模板限制，实现真正个性化,2026-09-10
+102,知乎,https://zhuanlan.zhihu.com/p/2001976929943831011,体验Dokie后对AI PPT判断变了，Agent模式才是正确打开方式,正面,产品模式,Dokie,采用Agent交互模式，人机协作,2026-09-10
+103,知乎,https://zhuanlan.zhihu.com/p/2078274636370932813,史上最强PPT Skill用Codex做出美观可编辑的PPT，但学习成本高,中性,使用门槛,Codex,降低技术门槛，提供更易用界面,2026-09-10
+104,WPS官网,https://www.wps.cn/article/xIizxQAn.html,AI PPT生成器不该只看功能表，要从真实场景找答案,中性,场景适配,通用,针对不同场景优化产品功能,2026-09-10
+105,2dogPPT,https://www.2dogppt.com/blog/ai-ppt-generator-guide,AI PPT生成器选哪个用哪个靠不靠谱，用户决策困难,中性,工具选择,通用,提供客观的工具评测和推荐,2026-09-10
+106,小红书,(外部),急急急！！求一个好用的一键生成ppt的ai，用户急需找到好用的AI PPT工具,中性,工具选择,通用,提供智能推荐，快速匹配需求,2026-09-10
+107,小红书,(外部),来抄作业！3分钟用AI生成一套完整PPT，用户对效率要求高,正面,效率提升,通用,优化生成速度，缩短等待时间,2026-09-10
+108,B站,https://www.bilibili.com/video/BV1s7gb6SEjB,彻底告别AI图片PPT，ChatGPT5.6生成可编辑的PPT，用户关注可编辑性,正面,可编辑性,ChatGPT,提升PPT可编辑能力,2026-09-10
+109,B站,https://www.bilibili.com/video/BV14s3u6TEQQ,AI做PPT别再直接生成了，长文本转汇报PPT要先做这一步，用户发现直接生成效果不好,负面,使用门槛,通用,提供分步骤引导，先整理大纲再制作,2026-09-10
+110,B站,https://www.bilibili.com/video/BV1LLu96NE6x,利用WorkBuddy快速制作漂亮PPT，附相关提示词，用户需要提示词参考,正面,使用门槛,WorkBuddy,提供内置提示词库和示例,2026-09-10
+111,B站,(外部),AI一键生成的PPT太辣眼睛，用户抱怨生成效果差,负面,设计质量,通用,提升设计审美，避免丑化效果,2026-09-10
+112,知乎,https://zhuanlan.zhihu.com/p/2081315191585760173,AI PPT工具测评ChatBA和AiPPT真实使用体验分享，用户对比评测需求强,中性,工具选择,ChatBA/AiPPT,提供客观对比评测,2026-09-10
+113,知乎,https://zhuanlan.zhihu.com/p/2067990867621721713,WPS AI文档一键生成PPT实测感受，用户对WPS AI感兴趣,正面,产品体验,WPS AI,与办公工具深度集成,2026-09-10
+114,知乎,https://zhuanlan.zhihu.com/p/2075314205838800855,为什么AI生成的PPT 90%都不敢直接拿去汇报，内容空泛缺乏深度,负面,内容质量,通用,提升内容深度和专业性,2026-09-10
+115,知乎,https://zhuanlan.zhihu.com/p/2080955174529640432,在做PPT的AI工具里，体验最好的是Gamma，但价格贵,中性,付费模式,Gamma,提供更平价的替代方案,2026-09-10
+116,虎嗅,https://m.huxiu.com/article/4817404.html,AI介入后的智能PPT缓解了用户焦虑，但生成内容不准确甚至编造数据,负面,内容质量,通用,提升内容准确性，避免数据编造,2026-09-10
+117,知乎,https://zhuanlan.zhihu.com/p/1957207282027828757,AI直接生成的模板同质化严重，长时间使用会产生审美疲劳,负面,模板化,通用,提供更多样化的设计风格,2026-09-10
+118,知乎,https://zhuanlan.zhihu.com/p/1957207282027828757,AI生成的PPT往往平铺直叙，甚至存在逻辑错误,负面,内容质量,通用,提升逻辑推理能力，保证内容准确,2026-09-10
+119,CSDN,(外部),AI PPT工具如何解决职场PPT同质化问题，模板感太强,负面,模板化,通用,突破模板限制，实现真正个性化,2026-09-10
+120,知乎,https://zhuanlan.zhihu.com/p/2001976929943831011,体验Dokie后对AI PPT判断变了，Agent模式才是正确打开方式,正面,产品模式,Dokie,采用Agent交互模式，人机协作,2026-09-10
+121,知乎,https://zhuanlan.zhihu.com/p/2078274636370932813,史上最强PPT Skill用Codex做出美观可编辑的PPT，但学习成本高,中性,使用门槛,Codex,降低技术门槛，提供更易用界面,2026-09-10
+122,WPS官网,https://www.wps.cn/article/xIizxQAn.html,AI PPT生成器不该只看功能表，要从真实场景找答案,中性,场景适配,通用,针对不同场景优化产品功能,2026-09-10
+123,2dogPPT,https://www.2dogppt.com/blog/ai-ppt-generator-guide,AI PPT生成器选哪个用哪个靠不靠谱，用户决策困难,中性,工具选择,通用,提供客观的工具评测和推荐,2026-09-10
+124,B站,https://www.bilibili.com/video/BV18TdbBiE9k,躺平办公有多爽？AI制作PPT的邪修公式，用户追求极简操作,正面,用户体验,通用,简化操作流程，降低使用难度,2026-09-10
+125,B站,https://www.bilibili.com/video/BV1kvXzBjEZA,2026年了谁还在手搓PPT？一条视频教会你用豆包搞定PPT，用户对免费工具感兴趣,正面,付费模式,豆包,提供免费基础版本,2026-09-10
+126,WPS官网,https://www.wps.cn/article/UwDvTTFf.html,AI PPT工具推荐2026，6款工具实测对比，用户按场景选型需求强烈,中性,工具选择,Gamma/Canva/Beautiful.ai,提供场景化推荐，帮助用户快速选型,2026-09-10
+127,WPS官网,https://www.wps.cn/article/UwDvTTFf.html,WPS AI免费+格式兼容+完整办公生态，用户认可免费模式,正面,付费模式,WPS AI,提供免费基础版本,2026-09-10
+128,WPS官网,https://www.wps.cn/article/UwDvTTFf.html,Gamma快速出稿异步分享好用，但中文效果不如国内工具,中性,中文支持,Gamma,优化中文生成质量,2026-09-10
+129,WPS官网,https://www.wps.cn/article/UwDvTTFf.html,Canva设计质量优先25万+模板，但价格较高,中性,付费模式,Canva,提供分级定价,2026-09-10
+130,WPS官网,https://www.wps.cn/article/UwDvTTFf.html,Beautiful.ai品牌一致性最强，但价格12美元/月偏高,中性,付费模式,Beautiful.ai,提供更平价的企业方案,2026-09-10
+131,行业调研,https://ppt.ai/blog/best-ai-ppt-maker-2026,PPT AI最佳整体输出评分9.3/10，但月费12美元,中性,付费模式,PPT AI,提供中文本地化版本,2026-09-10
+132,行业调研,https://ppt.ai/blog/best-ai-ppt-maker-2026,Gamma网页风格演示文稿评分8.0/10，月费10美元,中性,付费模式,Gamma,降低入门价格,2026-09-10
+133,行业调研,https://ppt.ai/blog/best-ai-ppt-maker-2026,Beautiful.ai品牌锁定团队评分7.8/10，但没有免费版,负面,付费模式,Beautiful.ai,提供有限免费版,2026-09-10
+134,行业调研,https://heydecks.com/blog/best-ai-to-make-ppt,AI生成PPT后导出PPTX兼容性是最大痛点，很多工具导出后版式错乱,负面,导出兼容性,Gamma/Canva,确保PPTX导出兼容性,2026-09-10
+135,行业调研,https://heydecks.com/blog/best-ai-to-make-ppt,Canva导出PPTX时动画和特效会丢失,负面,导出兼容性,Canva,保留动画效果的导出,2026-09-10
+136,行业调研,https://knightli.com/en/2026/05/18/ai-ppt-skills-selection-guide,"AI PPT生成已从""输入标题应用模板""进化为可安装的可复用Agent Skills",正面,产品模式,通用,支持API集成和自动化工作流,2026-09-10
+137,行业调研,https://knightli.com/en/2026/05/18/ai-ppt-skills-selection-guide,HTML网页演示文稿与可编辑PPTX之间存在取舍，用户需求分化,中性,产品形态,通用,同时支持网页和PPTX两种形态,2026-09-10
+138,行业调研,https://theguidex.com/best-ai-ppt-generators,Gamma拥有70M+用户，是最快的提示词到演示文稿生成工具,正面,效率提升,Gamma,持续优化生成速度,2026-09-10
+139,行业调研,https://theguidex.com/best-ai-ppt-generators,Gamma缺点是PPTX导出时视觉精致度会降低，渐变变平、自定义布局被重排,负面,导出兼容性,Gamma,改善PPTX导出质量,2026-09-10
+140,行业调研,https://theguidex.com/best-ai-ppt-generators,Beautiful.ai的Smart Slides在导出静态PPTX后智能行为会失效,负面,导出兼容性,Beautiful.ai,导出后仍保留智能排版能力,2026-09-10
+141,知乎,https://zhuanlan.zhihu.com/p/2073738180843651236,AI做的PPT内容太空洞，希望有联网调研自动找数据的功能,负面,内容质量,通用,支持联网搜索和自动数据填充,2026-09-10
+142,知乎,https://zhuanlan.zhihu.com/p/2040435529343362762,花6小时做的PPT老板只看3秒就否定，核心问题是内容和表达不对,负面,内容质量,通用,提供内容审核和表达优化建议,2026-09-10
+143,知乎,https://zhuanlan.zhihu.com/p/2078201091557160424,AI做不好PPT，生成的PPT缺乏灵魂和个性化,负面,个性化,通用,支持个人风格学习和品牌定制,2026-09-10
+144,知乎,https://zhuanlan.zhihu.com/p/2076996396582974428,AI生成PPT需要自我进化，用得越多质量越高，用户希望工具能学习改进,正面,产品模式,通用,支持用户反馈学习，持续优化,2026-09-10
+145,CSDN,https://blog.csdn.net/yorko/article/details/164031790,AI生成的PPT 90%都不敢直接拿去汇报，内容空泛缺乏深度,负面,内容质量,通用,提升内容深度和专业性,2026-09-10
+146,行业调研,https://theguidex.com/best-ai-ppt-generators,Tome在2025年4月关闭，用户转投其他工具,负面,产品稳定性,Tome,保持产品长期稳定运营,2026-09-10
+147,行业调研,https://theguidex.com/best-ai-ppt-generators,Gamma的AI生图功能被评为行业领先，但导出PPTX时图片质量下降,中性,配图质量,Gamma,提升导出图片质量,2026-09-10
+148,知乎,https://zhuanlan.zhihu.com/p/2078530839789552263,需要做PPT时选哪款软件，用户面临选择困难,中性,工具选择,通用,提供智能推荐系统,2026-09-10
+149,B站,https://www.bilibili.com/video/BV1UEuL6mEgS,用ChatGPT或Codex制作学术汇报PPT，10分钟量产精美PPT,正面,效率提升,ChatGPT/Codex,支持学术场景优化,2026-09-10
+150,B站,https://www.bilibili.com/video/BV1S7Mu6cEGq,Codex生成PPT从能用到好用的实操技巧，用户关注进阶用法,正面,使用门槛,Codex,提供分阶段教程,2026-09-10
+151,知乎,https://zhuanlan.zhihu.com/p/2070275767657836804,收藏！9个高质量AI PPT Skill，覆盖四大使用场景,正面,场景适配,通用,按场景分类提供技能,2026-09-10
+152,知乎,https://zhuanlan.zhihu.com/p/2081154042542273691,想问问大家AI怎么帮忙做PPT，用户寻求使用建议,中性,使用门槛,通用,提供新手入门指南,2026-09-10
+153,CSDN,https://blog.csdn.net/yorko/article/details/164031790,付费规则模糊、扣费逻辑不透明是用户最大吐槽点,负面,付费模式,通用,透明化收费规则,2026-09-10
+154,CSDN,https://blog.csdn.net/yorko/article/details/164031790,生成失败没有补偿机制，用户体验差,负面,稳定性,通用,建立失败补偿机制,2026-09-10
+155,人人都是产品经理,https://www.woshipm.com/share/6017712.html,Gamma中文效果不如国内产品，不太适合国内用户,负面,中文支持,Gamma,加强中文本地化,2026-09-10
+156,人人都是产品经理,https://www.woshipm.com/share/6017712.html,Tome生成的内容过于少，输入主题只生成2页,负面,内容质量,Tome,提升内容生成量,2026-09-10
+157,知乎,https://zhuanlan.zhihu.com/p/1983518246318654113,600页AI-PPT实战后写了全网最全NotebookLM制作PPT教程,正面,教程需求,NotebookLM,提供详细使用教程,2026-09-10
+158,知乎,https://zhuanlan.zhihu.com/p/1987483868987662679,Kimi把AI PPT的天花板捅了个大窟窿，免费策略受关注,正面,付费模式,Kimi,提供免费基础版本,2026-09-10
+159,知乎,https://zhuanlan.zhihu.com/p/2078219240088388158,用DeepSeek搞了个PPT生成器，开源项目受关注,正面,产品模式,DeepSeek,考虑开源策略,2026-09-10
+160,B站,https://www.bilibili.com/video/BV18PtB6wEZ5,5万多星的PPT-Master作者亲自演示，每个元素都可编辑,正面,可编辑性,PPT-Master,支持元素级精细编辑,2026-09-10
+161,B站,https://www.bilibili.com/video/BV1ZZAFzWEPJ,开源AI PPT工具PPT-Master获37000星，作者完整用法演示,正面,产品模式,PPT-Master,提供开源版本选项,2026-09-10
+162,知乎,https://zhuanlan.zhihu.com/p/2075370678711329427,4.9万星PPT Master：AI生成的PPT可以继续改到什么程度,正面,可编辑性,PPT-Master,持续优化编辑体验,2026-09-10
+163,技术社区,https://hub.baai.ac.cn/view/52601,阿里千问PPT生成效果好，但复杂字体生成会出错,中性,生成质量,千问,提升字体渲染能力,2026-09-10
+164,技术社区,https://hub.baai.ac.cn/view/52601,AI在视觉生成时文字可能出现变形、结构错位,负面,生成质量,通用,提升文字渲染准确性,2026-09-10
+165,WPS官网,https://www.wps.cn/article/UwDvTTFf.html,Copilot和Gemini代表传统工具的AI化路径，无缝集成是卖点,正面,产品模式,Copilot/Gemini,与主流办公工具集成,2026-09-10
