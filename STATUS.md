@@ -74,8 +74,10 @@
 - [x] BLOCKERS.md
 - [x] STATUS.md
 - [x] TODOLIST.md
-- [x] ppt-market-research-questionnaire.md（调研问卷草案 + 竞品对比框架 + 用户访谈提纲）
-- [x] ppt-competitor-analysis.md（竞品分析框架草稿）
+- [x] ppt-market-research-plan.md（平台采集方案，替代问卷）
+- [x] docs/user-feedback-raw.csv（20条结构化数据）
+- [x] docs/user-feedback-summary.md（汇总报告）
+- [x] docs/user-feedback-insights.md（洞察报告）
 - [x] docs/competitive-analysis-test-plan.md（竞品测试大纲 v1.0）
 - [x] docs/competitive-analysis.json（结构化数据骨架）
 
@@ -114,8 +116,8 @@ e1a3692 fix(e2e): strengthen invalid session assertion + add Assets API tests
 | P1 | 后端压力测试 | @Codex | 待执行 |
 | P1 | 生产环境部署方案 | @Hermes | 待开始 |
 | P0 | 素材库数据结构设计 | @Hermes | ⏳ 待JARVIS批准 |
-| P1 | 发起用户调研问卷（投放渠道：腾讯问卷；目标9/23回收200份） | @Claude | 🔄 问卷已定稿，等待投放 |
-| P1 | 竞品体验对比报告（5款，目标9/18完成） | @Codex | ✅ 测试框架已就绪（docs/competitive-analysis-test-plan.md + competitive-analysis.json） |
+| P0 | 用户反馈采集（平台采集替代问卷） | Claude | ✅ 首轮20条已完成，继续扩大采集 |
+| P1 | 竞品体验对比报告（5款） | Codex | ✅ 测试框架就绪 |
 | P0 | 素材库数据结构设计 | @Hermes | ⏳ 待JARVIS批准 |
 | P2 | Error Boundary 添加 | — | 建议项 |
 | P2 | 生产环境 API 代理配置 | — | 建议项 |
@@ -131,7 +133,7 @@ e1a3692 fix(e2e): strengthen invalid session assertion + add Assets API tests
 
 1. **E2E 验证**: @Codex 启动后端服务，运行 `npx playwright test e2e/`
 2. **部署方案**: @Hermes 制定生产环境部署方案（Vercel/阿里云）
-3. **市场调研**: 问卷已定稿，明天开始腾讯问卷投放（目标9/23回收200份）
+3. **用户反馈采集**: 首轮20条HN反馈已采集完成（docs/user-feedback-summary.md + insights.md），继续扩大国内平台采集
 4. **竞品对比**: @Codex 按P0优先级测试 Gamma → 讯飞智文 → Beautiful.ai → 腾讯文档AI → Tome
 5. **AI API 集成**: 配置真实 API Key，替换 mock 数据
 
