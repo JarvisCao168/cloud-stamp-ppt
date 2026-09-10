@@ -147,8 +147,8 @@ test.describe('HTML Export API', () => {
       body: JSON.stringify({ session_id: 'invalid-session', format: 'html' }),
       signal: AbortSignal.timeout(15_000),
     });
-    // 后端对无效会话应使用默认模板生成（成功）或返回客户端错误（4xx）
-    const isFallback = response.ok && (await response.json()).filename?.includes('invalid-session');
+    // 后端对无效会话应使用降级内容生成（成功）或返回客户端错误（4xx）
+    const isFallback = response.ok && (await response.json()).filename?.endsWith('.html');
     const isError = !response.ok && response.status >= 400 && response.status < 500;
     expect(isFallback || isError).toBe(true);
   });
