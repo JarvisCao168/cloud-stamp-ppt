@@ -13,23 +13,27 @@ export default function CheckpointPanel({ checkpoints, onUpdateCheckpoint, onCon
   if (mode !== 'mastery') return null;
 
   const checkpointList = Array.from(checkpoints.values());
+  const completedCount = checkpointList.filter(c => c.status === 'completed').length;
+  const progressPercent = checkpointList.length > 0
+    ? Math.round((completedCount / checkpointList.length) * 100)
+    : 0;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
         检查点进度
       </h2>
-      
+
       <div className="space-y-3">
-        {checkpointList.map((cp) => (
+        {checkpointList.map((cp, index) => (
           <div
             key={cp.id}
             className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50"
           >
             <div className="flex items-center gap-3">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                cp.status === 'completed' 
-                  ? 'bg-green-100 dark:bg-green-900/30 text-green-600' 
+                cp.status === 'completed'
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-600'
                   : cp.status === 'in_progress'
                   ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
                   : 'bg-gray-100 dark:bg-gray-600 text-gray-400'
@@ -41,7 +45,7 @@ export default function CheckpointPanel({ checkpoints, onUpdateCheckpoint, onCon
                 ) : cp.status === 'in_progress' ? (
                   <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
                 ) : (
-                  <span className="text-sm font-medium">{checkpointList.indexOf(cp) + 1}</span>
+                  <span className="text-sm font-medium">{index + 1}</span>
                 )}
               </div>
               <div>
@@ -53,7 +57,7 @@ export default function CheckpointPanel({ checkpoints, onUpdateCheckpoint, onCon
                 </p>
               </div>
             </div>
-            
+
             <div className="flex gap-2">
               {cp.status === 'pending' && (
                 <button
@@ -91,14 +95,12 @@ export default function CheckpointPanel({ checkpoints, onUpdateCheckpoint, onCon
       <div className="mt-6">
         <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
           <span>Progress</span>
-          <span>{Math.round((checkpointList.filter(c => c.status === 'completed').length / checkpointList.length) * 100)}%</span>
+          <span>{progressPercent}%</span>
         </div>
         <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-          <div 
+          <div
             className="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-300"
-            style={{ 
-              width: `${(checkpointList.filter(c => c.status === 'completed').length / checkpointList.length) * 100}%` 
-            }}
+            style={{ width: `${progressPercent}%` }}
           />
         </div>
       </div>

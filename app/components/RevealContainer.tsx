@@ -25,7 +25,7 @@ export default function RevealContainer({ slides, activeSlide, onSlideChange }: 
     // Import reveal.js dynamically to avoid SSR issues
     import('reveal.js').then((RevealModule) => {
       const R = RevealModule.default || RevealModule;
-      
+
       if (revealInstance.current) {
         revealInstance.current.destroy();
       }
@@ -45,6 +45,8 @@ export default function RevealContainer({ slides, activeSlide, onSlideChange }: 
           onSlideChange?.(event.indexh);
         });
       }
+    }).catch((err) => {
+      console.error('[RevealContainer] Failed to load reveal.js:', err);
     });
 
     return () => {

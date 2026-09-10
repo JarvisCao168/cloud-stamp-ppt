@@ -83,14 +83,19 @@ export async function exportToHTML(slides: SlideData[]): Promise<Blob> {
 }
 
 function escapeHtml(text: string): string {
+  // Use DOM API only in browser; fallback to manual escaping for SSR/safety
+  if (typeof document === 'undefined') {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
 
-export const EXPORT_FORMATS = [
-  { type: 'html' as const, name: 'HTML', icon: '🌐', description: 'Web格式，浏览器直接打开' },
-  { type: 'pptx' as const, name: 'PPTX', icon: '📊', description: 'PowerPoint 格式（需后端服务）' },
-  { type: 'pdf' as const, name: 'PDF', icon: '📄', description: '便携文档格式（需后端服务）' },
-  { type: 'png' as const, name: 'PNG', icon: '🖼️', description: '图片格式（需后端服务）' },
-] as const;
+// Re-export from api.ts to avoid duplication
+export { EXPORT_FORMATS } from './api';

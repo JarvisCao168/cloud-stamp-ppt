@@ -136,6 +136,7 @@ export function useGeneration() {
    */
   const confirmCheckpoint = useCallback(async (checkpointId: string, action: 'confirm' | 'edit' | 'regenerate' | 'select' = 'confirm') => {
     if (!sessionId) {
+      console.warn(`[useGeneration] confirmCheckpoint called without sessionId for checkpoint: ${checkpointId}`);
       updateCheckpoint(checkpointId, 'completed');
       return;
     }
