@@ -1,236 +1,140 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AI PPT 竞品对比分析数据",
-  "description": "标准化竞品测试数据结构，支持数据驱动优先级排序",
-  "version": "1.0.0",
-  "tested_at": "2026-09-10T00:00:00Z",
-  "test_standard_input": {
-    "theme": "2025年Q3销售团队年度业绩总结",
-    "doc_word_count": 3000,
-    "target_slide_count": 30
+  "metadata": {
+    "title": "AI PPT Tool Competitive Analysis",
+    "version": "1.0",
+    "created_date": "2026-09-10",
+    "last_updated": "2026-09-10",
+    "owner": "Hermes Agent"
   },
-  "tools": [
+  "competitors": [],
+  "summary": {
+    "total_competitors_tested": 0,
+    "average_weighted_score": 0,
+    "top_performer": null,
+    "best_for_chinese": null,
+    "best_for_design": null,
+    "best_for_ease_of_use": null
+  },
+  "evaluation_criteria": {
+    "content_quality": {
+      "weight": 0.25,
+      "sub_criteria": [
+        "relevance",
+        "accuracy",
+        "depth",
+        "structure"
+      ]
+    },
+    "visual_design": {
+      "weight": 0.25,
+      "sub_criteria": [
+        "layout",
+        "color_scheme",
+        "typography",
+        "visual_elements"
+      ]
+    },
+    "ai_capability": {
+      "weight": 0.2,
+      "sub_criteria": [
+        "content_understanding",
+        "generation_quality",
+        "customization",
+        "learning_adaptation"
+      ]
+    },
+    "user_experience": {
+      "weight": 0.15,
+      "sub_criteria": [
+        "interface_intuitiveness",
+        "generation_speed",
+        "error_handling",
+        "export_options"
+      ]
+    },
+    "chinese_support": {
+      "weight": 0.15,
+      "sub_criteria": [
+        "language_support",
+        "cultural_relevance",
+        "template_design",
+        "input_methods"
+      ]
+    }
+  },
+  "test_cases": [
     {
-      "id": "gamma",
-      "name": "Gamma",
-      "type": "international",
-      "url": "https://gamma.app",
-      "pricing": {
-        "free_tier": true,
-        "free_credits": 400,
-        "paid_from": 9,
-        "currency": "USD",
-        "billing_period": "month"
-      },
-      "scores": {
-        "D1_content_quality": {
-          "value": null,
-          "max": 5,
-          "notes": ""
-        },
-        "D2_template_design": {
-          "value": null,
-          "max": 5,
-          "notes": ""
-        },
-        "D3_chinese_support": {
-          "value": null,
-          "max": 5,
-          "notes": ""
-        },
-        "D4_editing_flexibility": {
-          "value": null,
-          "max": 5,
-          "notes": ""
-        },
-        "D5_export_compatibility": {
-          "value": null,
-          "max": 5,
-          "notes": ""
-        },
-        "D6_generation_speed": {
-          "value": null,
-          "max": 5,
-          "notes": ""
-        },
-        "D7_price_accessibility": {
-          "value": null,
-          "max": 5,
-          "notes": ""
-        }
-      },
-      "weighted_score": null,
-      "test_cases": {
-        "TC_01_theme_generation": {
-          "passed": false,
-          "duration_sec": null,
-          "issues": []
-        },
-        "TC_02_doc_generation": {
-          "passed": false,
-          "duration_sec": null,
-          "issues": []
-        },
-        "TC_03_template_richness": {
-          "count": null,
-          "notes": ""
-        },
-        "TC_04_export_test": {
-          "pptx": false,
-          "pdf": false,
-          "png": false,
-          "quality": ""
-        },
-        "TC_05_collaboration": {
-          "available": false,
-          "features": []
-        }
-      },
-      "strengths": [],
-      "weaknesses": [],
-      "recommendation": ""
+      "id": "TC-01",
+      "name": "Basic Generation Test",
+      "description": "Single slide generation with simple theme",
+      "input": "人工智能发展趋势",
+      "expected_output": "Single slide with relevant content"
     },
     {
-      "id": "beautiful_ai",
-      "name": "Beautiful.ai",
-      "type": "international",
-      "url": "https://www.beautiful.ai",
-      "pricing": {
-        "free_tier": false,
-        "free_trial_days": 14,
-        "paid_from": 12,
-        "currency": "USD",
-        "billing_period": "month"
-      },
-      "scores": {},
-      "weighted_score": null,
-      "test_cases": {},
-      "strengths": [],
-      "weaknesses": [],
-      "recommendation": ""
+      "id": "TC-02",
+      "name": "Multi-Slide Generation",
+      "description": "Full 8-slide presentation",
+      "input": "8-slide outline on AI trends",
+      "expected_output": "Complete 8-slide presentation"
     },
     {
-      "id": "xunfei_zhiwen",
-      "name": "讯飞智文",
-      "type": "chinese",
-      "url": "https://zhiwen.xfyun.cn",
-      "pricing": {
-        "free_tier": true,
-        "free_credits": "signup_bonus",
-        "pro_price": 169,
-        "ultra_price": 549,
-        "currency": "CNY",
-        "billing_period": "24months"
-      },
-      "scores": {},
-      "weighted_score": null,
-      "test_cases": {},
-      "strengths": [],
-      "weaknesses": [],
-      "recommendation": ""
+      "id": "TC-03",
+      "name": "Customization Test",
+      "description": "Modify generated content",
+      "input": "Generated content with modification requests",
+      "expected_output": "Modified content maintaining quality"
     },
     {
-      "id": "wps_ai",
-      "name": "WPS AI",
-      "type": "chinese",
-      "url": "https://aippt.wps.cn",
-      "pricing": {
-        "free_tier": true,
-        "free_credits": "limited",
-        "paid_from": null,
-        "currency": "CNY",
-        "billing_period": "monthly"
-      },
-      "scores": {},
-      "weighted_score": null,
-      "test_cases": {},
-      "strengths": [],
-      "weaknesses": [],
-      "recommendation": ""
+      "id": "TC-04",
+      "name": "Export Test",
+      "description": "Export in multiple formats",
+      "input": "Completed presentation",
+      "expected_output": "Exports in PDF, PPTX, PNG, HTML"
     },
     {
-      "id": "tencent_docs_ai",
-      "name": "腾讯文档AI",
-      "type": "chinese",
-      "url": "https://docs.qq.com",
-      "pricing": {
-        "free_tier": true,
-        "free_credits": "limited",
-        "paid_from": null,
-        "currency": "CNY"
-      },
-      "scores": {},
-      "weighted_score": null,
-      "test_cases": {},
-      "strengths": [],
-      "weaknesses": [],
-      "recommendation": ""
-    },
-    {
-      "id": "kimi_ppt",
-      "name": "Kimi PPT",
-      "type": "chinese",
-      "url": "https://kimi.moonshot.cn",
-      "pricing": {
-        "free_tier": true,
-        "free_credits": "generous",
-        "paid_from": null,
-        "currency": "CNY"
-      },
-      "scores": {},
-      "weighted_score": null,
-      "test_cases": {},
-      "strengths": [],
-      "weaknesses": [],
-      "recommendation": ""
-    },
-    {
-      "id": "tome",
-      "name": "Tome",
-      "type": "international",
-      "url": "https://tome.app",
-      "pricing": {
-        "free_tier": true,
-        "free_credits": "limited",
-        "paid_from": 8,
-        "currency": "USD",
-        "billing_period": "month"
-      },
-      "scores": {},
-      "weighted_score": null,
-      "test_cases": {},
-      "strengths": [],
-      "weaknesses": [],
-      "recommendation": ""
-    },
-    {
-      "id": "doubao_ppt",
-      "name": "豆包PPT",
-      "type": "chinese",
-      "url": "https://www.doubao.com",
-      "pricing": {
-        "free_tier": true,
-        "free_credits": "unlimited",
-        "paid_from": null,
-        "currency": "CNY"
-      },
-      "scores": {},
-      "weighted_score": null,
-      "test_cases": {},
-      "strengths": [],
-      "weaknesses": [],
-      "recommendation": ""
+      "id": "TC-05",
+      "name": "Template Selection",
+      "description": "Style preference matching",
+      "input": "Different style preferences",
+      "expected_output": "Appropriate template suggestions"
     }
   ],
-  "summary": {
-    "total_tools_tested": 0,
-    "average_weighted_score": null,
-    "top_3_by_category": {
-      "international": null,
-      "chinese": null,
-      "overall": null
-    },
-    "key_insights": [],
-    "priority_recommendations": []
+  "feedback_collection": {
+    "channels": [
+      "抖音",
+      "小红书",
+      "B站",
+      "视频号",
+      "知乎",
+      "微信公众号",
+      "贴吧",
+      "V2EX",
+      "即刻",
+      "微博",
+      "Reddit",
+      "Twitter"
+    ],
+    "metrics_to_track": [
+      "pain_points",
+      "feature_requests",
+      "use_cases",
+      "satisfaction_scores",
+      "comparison_mentions"
+    ]
+  },
+  "cloud_stamp_positioning": {
+    "unique_selling_points": [
+      "Template upload and style transfer",
+      "Material library with semantic search",
+      "Real-time collaborative editing",
+      "Industry-specific templates"
+    ],
+    "target_audience": [
+      "University students (innovation competitions)",
+      "Business professionals",
+      "Educators",
+      "Content creators"
+    ],
+    "differentiation_strategy": "Focus on template intelligence and material library ecosystem"
   }
 }
