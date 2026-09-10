@@ -41,7 +41,11 @@
 - [x] 测试覆盖率 **93.57%** (目标 ≥60%)
 
 ### CI/CD ✅
-- [x] GitHub Actions 流水线配置
+配置并稳定运行 (CI #5 & #6 通过)
+- [x] Dockerfile 构建配置
+- [x] docker-compose.yml 编排配置
+- [x] 本地测试脚本 (test:ci, build:verify, test:e2e)
+配置
 - [x] Dockerfile 构建配置
 - [x] docker-compose.yml 编排配置
 - [x] 本地测试脚本 (test:ci, build:verify, test:e2e)
@@ -82,7 +86,13 @@ TypeScript: 0 错误
 | build-and-test (20.x) | ✅ Success | 2m 23s |
 | e2e (20.x) | ✅ Success | - |
 
-**连续两次 CI 通过！**
+**CI 流水线稳定运行**
+
+| Run | Commit | Status | Duration |
+|-----|--------|--------|----------|
+| #5 | fix(e2e): properly skip API tests | ✅ Success | 2m 22s |
+| #6 | docs: update CI status | ✅ Success | 2m 23s |
+| #7 | docs: update CI status | 🔄 Running | - |
 
 **测试结果**:
 - 单元测试: 140/140 通过 (93.57% 覆盖率)

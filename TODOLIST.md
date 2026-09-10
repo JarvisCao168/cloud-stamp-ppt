@@ -6,7 +6,7 @@
 
 - [x] **Hermes**: 初始化 git 仓库并推送到 GitHub
 - [x] **Hermes**: 补充 README.md 项目文档
-- [x] **Codex**: 验证 GitHub Actions CI 流水线 (CI #5 已通过)
+- [x] **Codex + Hermes**: 验证 GitHub Actions CI 流水线 (CI #5 & #6 均通过)
 - [ ] **Hermes**: 配置 GitHub Pages 或 Vercel 部署
 
 ## P1 - 中优先级（下周完成）
