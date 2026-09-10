@@ -2,7 +2,7 @@
 
 **更新日期**: 2026-09-10 22:00
 **当前阶段**: 前后端开发完成，用户调研第一轮+第二轮数据采集完成，测试覆盖率93.57%
-**最新 Commit**: `776abc3` — docs: collect user feedback from HN (20 high-quality responses)
+**最新 Commit**: `04c6737` — docs: domestic platform feedback round 2 (20 items)
 
 ## 团队配置
 
@@ -75,7 +75,7 @@
 - [x] STATUS.md
 - [x] TODOLIST.md
 - [x] ppt-market-research-plan.md（平台采集方案，替代问卷）
-- [x] docs/user-feedback-raw.csv（55条结构化数据：HN 20条 + 国内35条）
+- [x] docs/user-feedback-raw.csv（40条结构化数据：HN 20条 + 国内20条）
 - [x] docs/user-feedback-summary.md（第一轮汇总报告，HN）
 - [x] docs/user-feedback-insights.md（第一轮洞察报告）
 - [x] docs/user-feedback-summary-round2.md（第二轮汇总报告，国内平台）
