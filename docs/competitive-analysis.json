@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI PPT 竞品对比分析数据",
+  "description": "标准化竞品测试数据结构，支持数据驱动优先级排序",
+  "version": "1.0.0",
+  "tested_at": "2026-09-10T00:00:00Z",
+  "test_standard_input": {
+    "theme": "2025年Q3销售团队年度业绩总结",
+    "doc_word_count": 3000,
+    "target_slide_count": 30
+  },
+  "tools": [
+    {
+      "id": "gamma",
+      "name": "Gamma",
+      "type": "international",
+      "url": "https://gamma.app",
+      "pricing": {
+        "free_tier": true,
+        "free_credits": 400,
+        "paid_from": 9,
+        "currency": "USD",
+        "billing_period": "month"
+      },
+      "scores": {
+        "D1_content_quality": {
+          "value": null,
+          "max": 5,
+          "notes": ""
+        },
+        "D2_template_design": {
+          "value": null,
+          "max": 5,
+          "notes": ""
+        },
+        "D3_chinese_support": {
+          "value": null,
+          "max": 5,
+          "notes": ""
+        },
+        "D4_editing_flexibility": {
+          "value": null,
+          "max": 5,
+          "notes": ""
+        },
+        "D5_export_compatibility": {
+          "value": null,
+          "max": 5,
+          "notes": ""
+        },
+        "D6_generation_speed": {
+          "value": null,
+          "max": 5,
+          "notes": ""
+        },
+        "D7_price_accessibility": {
+          "value": null,
+          "max": 5,
+          "notes": ""
+        }
+      },
+      "weighted_score": null,
+      "test_cases": {
+        "TC_01_theme_generation": {
+          "passed": false,
+          "duration_sec": null,
+          "issues": []
+        },
+        "TC_02_doc_generation": {
+          "passed": false,
+          "duration_sec": null,
+          "issues": []
+        },
+        "TC_03_template_richness": {
+          "count": null,
+          "notes": ""
+        },
+        "TC_04_export_test": {
+          "pptx": false,
+          "pdf": false,
+          "png": false,
+          "quality": ""
+        },
+        "TC_05_collaboration": {
+          "available": false,
+          "features": []
+        }
+      },
+      "strengths": [],
+      "weaknesses": [],
+      "recommendation": ""
+    },
+    {
+      "id": "beautiful_ai",
+      "name": "Beautiful.ai",
+      "type": "international",
+      "url": "https://www.beautiful.ai",
+      "pricing": {
+        "free_tier": false,
+        "free_trial_days": 14,
+        "paid_from": 12,
+        "currency": "USD",
+        "billing_period": "month"
+      },
+      "scores": {},
+      "weighted_score": null,
+      "test_cases": {},
+      "strengths": [],
+      "weaknesses": [],
+      "recommendation": ""
+    },
+    {
+      "id": "xunfei_zhiwen",
+      "name": "讯飞智文",
+      "type": "chinese",
+      "url": "https://zhiwen.xfyun.cn",
+      "pricing": {
+        "free_tier": true,
+        "free_credits": "signup_bonus",
+        "pro_price": 169,
+        "ultra_price": 549,
+        "currency": "CNY",
+        "billing_period": "24months"
+      },
+      "scores": {},
+      "weighted_score": null,
+      "test_cases": {},
+      "strengths": [],
+      "weaknesses": [],
+      "recommendation": ""
+    },
+    {
+      "id": "wps_ai",
+      "name": "WPS AI",
+      "type": "chinese",
+      "url": "https://aippt.wps.cn",
+      "pricing": {
+        "free_tier": true,
+        "free_credits": "limited",
+        "paid_from": null,
+        "currency": "CNY",
+        "billing_period": "monthly"
+      },
+      "scores": {},
+      "weighted_score": null,
+      "test_cases": {},
+      "strengths": [],
+      "weaknesses": [],
+      "recommendation": ""
+    },
+    {
+      "id": "tencent_docs_ai",
+      "name": "腾讯文档AI",
+      "type": "chinese",
+      "url": "https://docs.qq.com",
+      "pricing": {
+        "free_tier": true,
+        "free_credits": "limited",
+        "paid_from": null,
+        "currency": "CNY"
+      },
+      "scores": {},
+      "weighted_score": null,
+      "test_cases": {},
+      "strengths": [],
+      "weaknesses": [],
+      "recommendation": ""
+    },
+    {
+      "id": "kimi_ppt",
+      "name": "Kimi PPT",
+      "type": "chinese",
+      "url": "https://kimi.moonshot.cn",
+      "pricing": {
+        "free_tier": true,
+        "free_credits": "generous",
+        "paid_from": null,
+        "currency": "CNY"
+      },
+      "scores": {},
+      "weighted_score": null,
+      "test_cases": {},
+      "strengths": [],
+      "weaknesses": [],
+      "recommendation": ""
+    },
+    {
+      "id": "tome",
+      "name": "Tome",
+      "type": "international",
+      "url": "https://tome.app",
+      "pricing": {
+        "free_tier": true,
+        "free_credits": "limited",
+        "paid_from": 8,
+        "currency": "USD",
+        "billing_period": "month"
+      },
+      "scores": {},
+      "weighted_score": null,
+      "test_cases": {},
+      "strengths": [],
+      "weaknesses": [],
+      "recommendation": ""
+    },
+    {
+      "id": "doubao_ppt",
+      "name": "豆包PPT",
+      "type": "chinese",
+      "url": "https://www.doubao.com",
+      "pricing": {
+        "free_tier": true,
+        "free_credits": "unlimited",
+        "paid_from": null,
+        "currency": "CNY"
+      },
+      "scores": {},
+      "weighted_score": null,
+      "test_cases": {},
+      "strengths": [],
+      "weaknesses": [],
+      "recommendation": ""
+    }
+  ],
+  "summary": {
+    "total_tools_tested": 0,
+    "average_weighted_score": null,
+    "top_3_by_category": {
+      "international": null,
+      "chinese": null,
+      "overall": null
+    },
+    "key_insights": [],
+    "priority_recommendations": []
+  }
+}
