@@ -33,7 +33,7 @@ jobs:
         run: npm run build
 
       - name: Run tests with coverage
-        run: npx vitest run --coverage
+        run: npx vitest run --coverage.provider=istanbul
         env:
           NODE_ENV: test
 
