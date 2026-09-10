@@ -104,6 +104,9 @@ TypeScript: 0 错误
 - ✅ 恢复覆盖率门控检查（>=60%，vitest 内置阈值强制）
 - ✅ 删除过时重复测试文件 `tests/e2e/export-api.test.ts`
 - ✅ 更新 README 项目结构（`e2e/` 路径正确）
+- ✅ E2E 测试所有 fetch 添加超时保护（防止悬挂）
+- ✅ 增强 invalid session 测试断言（支持 fallback 或 4xx）
+- ✅ 添加 Assets API 测试覆盖（/api/assets/all, /api/hardware/detect）
 
 ---
 
@@ -138,4 +141,4 @@ TypeScript: 0 错误
 
 ---
 
-**最后更新**: 2026-09-10 21:30 CST by @Claude (代码审查 & CI 修复)
+**最后更新**: 2026-09-10 21:45 CST by @Claude (代码审查 & CI 修复 - 第 2 轮)
