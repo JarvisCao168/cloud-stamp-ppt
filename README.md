@@ -65,9 +65,9 @@ D:\yzppt\
 │       ├── RevealContainer.tsx
 │       ├── LoadingState.tsx
 │       └── ErrorMessage.tsx
-├── __tests__/                    # 单元测试（Vitest）
 ├── __mocks__/                    # Mock 数据
-├── tests/e2e/                    # E2E 测试（Playwright）
+├── __tests__/                    # 单元测试（Vitest）
+├── e2e/                          # E2E 测试（Playwright）
 ├── public/                       # 静态资源
 ├── .github/workflows/ci.yml      # CI 流水线
 ├── Dockerfile                    # 前端生产镜像

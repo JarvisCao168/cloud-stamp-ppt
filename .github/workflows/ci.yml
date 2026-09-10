@@ -37,11 +37,6 @@ jobs:
         env:
           NODE_ENV: test
 
-      - name: Check test results
-        run: npx vitest run
-        env:
-          NODE_ENV: test
-
   e2e:
     runs-on: ubuntu-latest
     needs: build-and-test

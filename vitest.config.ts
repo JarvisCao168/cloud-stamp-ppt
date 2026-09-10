@@ -6,12 +6,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
     globals: true,
-    // Force Vite to reprocess react/react-dom as source (not pre-bundled)
-    // so NODE_ENV=development in setup file takes effect
     ssr: {
       noExternal: ['react', 'react-dom'],
     },
-    // Exclude Playwright E2E tests from Vitest execution
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
@@ -20,6 +17,24 @@ export default defineConfig({
       '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*',
       '**/e2e/**',
     ],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'coverage/**',
+        'dist/**',
+        '**/*.config.ts',
+        '**/*.config.js',
+        'node_modules/**',
+      ],
+      // Fail CI if coverage is below threshold
+      thresholds: {
+        statements: 60,
+        branches: 60,
+        functions: 60,
+        lines: 60,
+      },
+    },
   },
   resolve: {
     alias: {
