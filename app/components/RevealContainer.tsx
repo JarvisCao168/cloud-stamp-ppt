@@ -80,7 +80,7 @@ export default function RevealContainer({ slides, activeSlide, onSlideChange }: 
             <section key={index} data-slide-id={`slide-${index}`}>
               <h2>{slide.title}</h2>
               <div className="content" style={{ textAlign: 'left', fontSize: '0.8em', padding: '20px' }}>
-                {slide.content.split('\n').map((line: string, i: number) => (
+                {(typeof slide.content === 'string' ? slide.content.split('\n') : slide.content).map((line: string, i: number) => (
                   <p key={i} style={{ marginBottom: '12px' }}>{line}</p>
                 ))}
               </div>

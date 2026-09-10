@@ -25,10 +25,11 @@ export default defineConfig({
     },
   ],
   // 启动 Next.js 开发服务器用于 E2E 测试
+  // 必须设置 NODE_ENV=development 才能启用 /api/* 代理到后端
   webServer: {
     command: process.env.CI
       ? 'npm run dev'
-      : `set PORT=${PORT} && npm run dev`,
+      : `set NODE_ENV=development&set PORT=${PORT}&npm run dev`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 60000,
