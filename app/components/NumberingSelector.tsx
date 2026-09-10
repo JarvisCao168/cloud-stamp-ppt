@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { NumberingStyle, NUMBERING_TYPE_LABELS } from '@/data/numberingStyles';
+import { getNumberingStyles } from '@/api';
 
 interface NumberingSelectorProps {
   value?: string;
@@ -21,11 +22,20 @@ const NumberingSelector: React.FC<NumberingSelectorProps> = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 加载初始数据（后续可替换为 API 调用）
-    import('@/data/numberingStyles').then((mod) => {
-      setStyles(mod.NUMBERING_STYLES);
-      setLoading(false);
-    });
+    // 从后端 API 加载序号样式数据
+    getNumberingStyles()
+      .then((data) => {
+        setStyles(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Failed to load numbering styles:', err);
+        // 降级到本地数据
+        import('@/data/numberingStyles').then((mod) => {
+          setStyles(mod.NUMBERING_STYLES);
+          setLoading(false);
+        });
+      });
   }, []);
 
   const filteredStyles = useMemo(() => {

@@ -152,6 +152,58 @@ export async function exportPresentation(
   return response.json();
 }
 
+
+/**
+ * 获取序号样式列表
+ */
+export interface NumberingStyle {
+  id: string;
+  name: string;
+  type: 'numeric' | 'chinese' | 'level' | 'graphic' | 'icon' | 'english' | 'special';
+  symbols: string[];
+  description: string;
+  tags: string[];
+  max_depth: number;
+  preview_html: string;
+  is_system?: boolean;
+}
+
+export async function getNumberingStyles(filters?: {
+  type?: string;
+  tags?: string[];
+}): Promise<NumberingStyle[]> {
+  const params = new URLSearchParams();
+  if (filters?.type) params.append('type', filters.type);
+  if (filters?.tags) {
+    filters.tags.forEach(tag => params.append('tags', tag));
+  }
+  
+  const queryString = params.toString();
+  const response = await fetch(
+    `/api/assets/numbering-styles${queryString ? '?' + queryString : ''}`
+  );
+  
+  if (!response.ok) {
+    throw new Error(`获取序号样式失败 (HTTP ${response.status})`);
+  }
+  return response.json();
+}
+
+/**
+ * 获取所有资产（模板、配色、序号样式等）
+ */
+export async function getAllAssets(): Promise<{
+  templates: any[];
+  colorSchemes: any[];
+  numberingStyles: NumberingStyle[];
+}> {
+  const response = await fetch('/api/assets/all');
+  if (!response.ok) {
+    throw new Error(`获取资产失败 (HTTP ${response.status})`);
+  }
+  return response.json();
+}
+
 export const EXPORT_FORMATS = [
   { type: 'html' as const, name: 'HTML', icon: '🌐', description: 'Web格式，浏览器直接打开' },
   { type: 'pptx' as const, name: 'PPTX', icon: '📊', description: 'PowerPoint 格式' },
