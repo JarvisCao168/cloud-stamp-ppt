@@ -1,6 +1,6 @@
 # 云章PPT智能体系统 - 项目状态报告
 
-**更新日期**: 2026-09-10
+**更新日期**: 2026-09-10 22:00
 **当前阶段**: 前后端开发完成，后端服务已启动，E2E 测试待验证
 **最新 Commit**: `8a3145d` — feat(backend): add FastAPI backend service
 
@@ -74,8 +74,10 @@
 - [x] BLOCKERS.md
 - [x] STATUS.md
 - [x] TODOLIST.md
-- [x] ppt-market-research-questionnaire.md（调研问卷草案）
-- [x] ppt-competitor-analysis.md（竞品对比框架）
+- [x] ppt-market-research-questionnaire.md（调研问卷草案 + 竞品对比框架 + 用户访谈提纲）
+- [x] ppt-competitor-analysis.md（竞品分析框架草稿）
+- [x] docs/competitive-analysis-test-plan.md（竞品测试大纲 v1.0）
+- [x] docs/competitive-analysis.json（结构化数据骨架）
 
 ## 当前状态
 
@@ -111,8 +113,9 @@ e1a3692 fix(e2e): strengthen invalid session assertion + add Assets API tests
 | **P0** | 运行完整 E2E 测试验证 | @Codex | ✅ 后端就绪 |
 | P1 | 后端压力测试 | @Codex | 待执行 |
 | P1 | 生产环境部署方案 | @Hermes | 待开始 |
-| P1 | 用户调研问卷发起 | @Claude | 🔄 草案已起草 |
-| P1 | 竞品体验对比报告 | @Codex | 🔄 框架已创建 |
+| P0 | 素材库数据结构设计 | @Hermes | ⏳ 待JARVIS批准 |
+| P1 | 发起用户调研问卷（投放渠道：腾讯问卷；目标9/23回收200份） | @Claude | 🔄 问卷已定稿，等待投放 |
+| P1 | 竞品体验对比报告（5款，目标9/18完成） | @Codex | ✅ 测试框架已就绪（docs/competitive-analysis-test-plan.md + competitive-analysis.json） |
 | P0 | 素材库数据结构设计 | @Hermes | ⏳ 待JARVIS批准 |
 | P2 | Error Boundary 添加 | — | 建议项 |
 | P2 | 生产环境 API 代理配置 | — | 建议项 |
@@ -128,9 +131,21 @@ e1a3692 fix(e2e): strengthen invalid session assertion + add Assets API tests
 
 1. **E2E 验证**: @Codex 启动后端服务，运行 `npx playwright test e2e/`
 2. **部署方案**: @Hermes 制定生产环境部署方案（Vercel/阿里云）
-3. **市场调研**: 问卷草案已完成，待投放回收数据
-4. **AI API 集成**: 配置真实 API Key，替换 mock 数据
+3. **市场调研**: 问卷已定稿，明天开始腾讯问卷投放（目标9/23回收200份）
+4. **竞品对比**: @Codex 按P0优先级测试 Gamma → 讯飞智文 → Beautiful.ai → 腾讯文档AI → Tome
+5. **AI API 集成**: 配置真实 API Key，替换 mock 数据
 
 ---
 
-*本报告由 Hermes 维护，最后更新: 2026-09-10*
+---
+
+## 调研任务时间线
+
+| 阶段 | 任务 | 负责人 | 截止时间 |
+|------|------|--------|---------|
+| 准备期 | 问卷定稿 + 测试框架就绪 | Claude/Hermes | ✅ 2026-09-10 |
+| 执行期 | 问卷投放（腾讯问卷） | Claude | 2026-09-13~09-23 |
+| 执行期 | 竞品体验对比（5款） | Codex | 2026-09-13~09-18 |
+| 执行期 | 用户深度访谈（5-10人） | Claude | 2026-09-23~09-26 |
+| 分析期 | 数据整理 + 报告撰写 | Claude | 2026-09-26~09-29 |
+| 评审期 | 团队评审 + 迭代优先级确认 | Hermes | 2026-09-30 |
