@@ -17,6 +17,13 @@ export async function exportPresentationToFile(
 }
 
 /**
+ * 获取 PPTX 导出用的序号样式 ID（若 options 未指定则从会话推断）
+ */
+export function getNumberingStyleForExport(options: ExportOptions, numberingStyleId?: string): string | undefined {
+  return options.numberingStyleId || numberingStyleId;
+}
+
+/**
  * 生成本地 HTML 导出（无后端时的降级方案）
  */
 export async function exportToHTML(slides: SlideData[]): Promise<Blob> {

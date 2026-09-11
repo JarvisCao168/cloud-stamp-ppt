@@ -11,6 +11,7 @@ import json
 from datetime import datetime
 
 from ...core.config import settings
+from ...db import get_db_sync
 
 router = APIRouter()
 
@@ -23,6 +24,7 @@ class ExportRequest(BaseModel):
     format: str  # html / pptx
     quality: str = "hd"
     title: str = "演示文稿"
+    numbering_style_id: Optional[str] = None
 
 
 @router.post("/html")
@@ -52,6 +54,9 @@ async def export_pptx(request: ExportRequest):
     if not slides_data:
         raise HTTPException(status_code=404, detail="找不到会话数据，请先通过生成接口创建会话")
 
+    # 解析序号样式
+    numbering_style = _resolve_numbering_style(request.numbering_style_id)
+
     prs = Presentation()
     prs.slide_width = Inches(13.333)
     prs.slide_height = Inches(7.5)
@@ -59,10 +64,15 @@ async def export_pptx(request: ExportRequest):
     slide_width = prs.slide_width
     slide_height = prs.slide_height
 
+    # 序号计数器和符号映射（支持 max_depth 层级）
+    symbol_counters: dict[int, int] = {}  # slide_index -> symbol_index
+    max_depth = numbering_style.get("max_depth", 1) if numbering_style else 1
+
     for slide in slides_data:
         title = slide.get("title", "无标题")
         content = slide.get("content", [])
         layout_type = slide.get("layout", "title-content")
+        slide_depth = 0  # 当前内容深度（用于多层级符号轮换）
 
         if layout_type == "cover":
             slide_layout = prs.slide_layouts[6]  # 空白布局
@@ -110,7 +120,7 @@ async def export_pptx(request: ExportRequest):
                 p2.alignment = PP_ALIGN.RIGHT
 
         else:
-            # 默认布局：标题 + 要点
+            # 默认布局：标题 + 要点（应用序号样式）
             slide_layout = prs.slide_layouts[6]
             slide_obj = prs.slides.add_slide(slide_layout)
             # 标题
@@ -126,13 +136,25 @@ async def export_pptx(request: ExportRequest):
             line.fill.solid()
             line.fill.fore_color.rgb = RGBColor(0xe2, 0xe8, 0xf0)
             line.line.fill.background()
-            # 内容要点
+            # 内容要点（带序号样式）
             content_box = slide_obj.shapes.add_textbox(Inches(0.7), Inches(1.6), Inches(11.9), Inches(5.5))
             ctf = content_box.text_frame
             ctf.word_wrap = True
+
+            symbols = numbering_style.get("symbols", ["•"]) if numbering_style else ["•"]
+            base_symbol_idx = slide_depth
+
             for i, item in enumerate(content):
                 p = ctf.paragraphs[0] if i == 0 else ctf.add_paragraph()
-                p.text = f"• {item}"
+                # 循环使用符号（支持多层级）
+                symbol_idx = base_symbol_idx + i
+                if max_depth > 1:
+                    # 多层级：按深度循环取符号
+                    sym_idx = base_symbol_idx + (i % max_depth)
+                    symbol = symbols[sym_idx % len(symbols)]
+                else:
+                    symbol = symbols[i % len(symbols)]
+                p.text = f"{symbol} {item}"
                 p.font.size = Pt(20)
                 p.font.color.rgb = RGBColor(0x33, 0x41, 0x55)
                 p.space_after = Pt(12)
@@ -245,6 +267,85 @@ async def get_export(filename: str):
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="文件不存在")
     return FileResponse(filepath)
+
+
+def _resolve_numbering_style(numbering_style_id: Optional[str]) -> Optional[Dict[str, Any]]:
+    """
+    解析序号样式：优先从 DB 读取，回退到内置常量
+    返回格式: {id, name, type, symbols: List[str], max_depth: int}
+    """
+    def _open_db():
+        """打开同步数据库连接（与 assets.py _get_db 一致的逻辑）"""
+        import sqlite3
+        db_path = settings.database_url
+        if db_path.startswith("sqlite+aiosqlite:///"):
+            db_path = db_path.replace("sqlite+aiosqlite:///", "")
+        elif db_path.startswith("sqlite:///"):
+            db_path = db_path.replace("sqlite:///", "")
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    # 内置样式数据（与 assets.py NUMBERING_STYLES 保持一致）
+    _BUILTIN_NUMBERING: Dict[str, Dict[str, Any]] = {
+        "numeric-dot": {"id": "numeric-dot", "name": "数字序号·", "type": "numeric", "symbols": ["1.", "2.", "3.", "4.", "5."], "max_depth": 3},
+        "numeric-paren": {"id": "numeric-paren", "name": "数字序号()", "type": "numeric", "symbols": ["(1)", "(2)", "(3)", "(4)", "(5)"], "max_depth": 3},
+        "numeric-bracket": {"id": "numeric-bracket", "name": "数字方括号", "type": "numeric", "symbols": ["[1]", "[2]", "[3]", "[4]", "[5]"], "max_depth": 3},
+        "numeric-bracket-n": {"id": "numeric-bracket-n", "name": "编号方括号", "type": "numeric", "symbols": ["1)", "2)", "3)", "4)", "5)"], "max_depth": 3},
+        "numeric-period-n": {"id": "numeric-period-n", "name": "圆圈数字", "type": "numeric", "symbols": ["①", "②", "③", "④", "⑤"], "max_depth": 1},
+        "chinese-clause": {"id": "chinese-clause", "name": "中文顿号", "type": "chinese", "symbols": ["一、", "二、", "三、", "四、", "五、"], "max_depth": 2},
+        "chinese-paren": {"id": "chinese-paren", "name": "中文括号", "type": "chinese", "symbols": ["（一）", "（二）", "（三）", "（四）", "（五）"], "max_depth": 2},
+        "chinese-bracket": {"id": "chinese-bracket", "name": "中文括号()", "type": "chinese", "symbols": ["(1)", "(2)", "(3)", "(4)", "(5)"], "max_depth": 2},
+        "chinese-ten": {"id": "chinese-ten", "name": "中文天干", "type": "chinese", "symbols": ["甲", "乙", "丙", "丁", "戊"], "max_depth": 1},
+        "level-nested": {"id": "level-nested", "name": "层级序号", "type": "level", "symbols": ["1.1", "1.1.1", "1.1.1.1"], "max_depth": 4},
+        "level-decimal": {"id": "level-decimal", "name": "小数层级", "type": "level", "symbols": ["0.1", "0.1.1", "0.1.1.1"], "max_depth": 4},
+        "level-bracket": {"id": "level-bracket", "name": "括号层级", "type": "level", "symbols": ["(1.1)", "(1.1.1)", "(1.1.1.1)"], "max_depth": 4},
+        "graphic-circle": {"id": "graphic-circle", "name": "圆形图形", "type": "graphic", "symbols": ["●", "○", "■", "□", "★", "☆"], "max_depth": 1},
+        "graphic-diamond": {"id": "graphic-diamond", "name": "菱形图形", "type": "graphic", "symbols": ["◆", "◇", "▸", "◂", "▹", "◃"], "max_depth": 1},
+        "graphic-square": {"id": "graphic-square", "name": "方块图形", "type": "graphic", "symbols": ["▣", "▤", "▥", "▦", "▧", "▨"], "max_depth": 1},
+        "graphic-triangle": {"id": "graphic-triangle", "name": "三角形图形", "type": "graphic", "symbols": ["▲", "△", "▼", "▽", "⬆", "⬇"], "max_depth": 1},
+        "graphic-check": {"id": "graphic-check", "name": "勾选图形", "type": "graphic", "symbols": ["✓", "✗", "☆", "★", "●", "○"], "max_depth": 1},
+        "graphic-bullet": {"id": "graphic-bullet", "name": "项目符号", "type": "graphic", "symbols": ["•", "‣", "⁃", "·", "▪", "▫"], "max_depth": 1},
+        "icon-check": {"id": "icon-check", "name": "箭头图标", "type": "icon", "symbols": ["→", "✓", "✗", "⚠", "★"], "max_depth": 1},
+        "icon-arrow": {"id": "icon-arrow", "name": "步骤箭头链", "type": "icon", "symbols": ["▶", "▶", "▶", "▶", "▶"], "max_depth": 1},
+        "icon-star": {"id": "icon-star", "name": "星级图标", "type": "icon", "symbols": ["⭐", "☆", "★★", "★★★", "★★★★"], "max_depth": 1},
+        "icon-badge": {"id": "icon-badge", "name": "徽章图标", "type": "icon", "symbols": ["🏆", "🥈", "🥉", "🎖", "🏅"], "max_depth": 1},
+        "icon-alert": {"id": "icon-alert", "name": "警告图标", "type": "icon", "symbols": ["⚠", "❗", "❓", "ℹ", "✅"], "max_depth": 1},
+        "english-alpha": {"id": "english-alpha", "name": "英文字母", "type": "english", "symbols": ["A.", "B.", "C.", "D.", "E."], "max_depth": 3},
+        "english-roman": {"id": "english-roman", "name": "罗马数字", "type": "english", "symbols": ["I.", "II.", "III.", "IV.", "V."], "max_depth": 3},
+        "english-alpha-lower": {"id": "english-alpha-lower", "name": "小写英文字母", "type": "english", "symbols": ["a.", "b.", "c.", "d.", "e."], "max_depth": 3},
+        "english-roman-lower": {"id": "english-roman-lower", "name": "小写罗马数字", "type": "english", "symbols": ["i.", "ii.", "iii.", "iv.", "v."], "max_depth": 3},
+        "special-enclosed": {"id": "special-enclosed", "name": "圈码数字", "type": "special", "symbols": ["①", "②", "③", "④", "⑤"], "max_depth": 1},
+        "special-enclosed-caps": {"id": "special-enclosed-caps", "name": "大写圈码", "type": "special", "symbols": ["Ⓐ", "Ⓑ", "Ⓒ", "Ⓓ", "Ⓔ"], "max_depth": 1},
+        "special-enclosed-small": {"id": "special-enclosed-small", "name": "小写圈码", "type": "special", "symbols": ["ⓐ", "ⓑ", "ⓒ", "ⓓ", "ⓔ"], "max_depth": 1},
+    }
+
+    if not numbering_style_id:
+        return None
+
+    # 优先从 DB 读取
+    try:
+        conn = _open_db()
+        row = conn.execute(
+            "SELECT id, name, type, symbols, max_depth FROM numbering_styles WHERE id = ?",
+            (numbering_style_id,),
+        ).fetchone()
+        conn.close()
+        if row:
+            symbols_raw = row["symbols"]
+            symbols = json.loads(symbols_raw) if isinstance(symbols_raw, str) else symbols_raw
+            return {
+                "id": row["id"],
+                "name": row["name"],
+                "type": row["type"],
+                "symbols": symbols,
+                "max_depth": row["max_depth"] or 1,
+            }
+    except Exception:
+        pass  # DB 不可用时回退到内置数据
+
+    # 回退到内置常量
+    return _BUILTIN_NUMBERING.get(numbering_style_id)
 
 
 def _load_session_slides(session_id: str) -> List[Dict[str, Any]]:

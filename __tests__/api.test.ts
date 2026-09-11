@@ -354,15 +354,42 @@ describe('API Functions', () => {
         json: async () => ({}),
       });
 
-      await exportPresentation('sess-123', { 
-        format: 'pdf', 
-        title: '我的演示', 
-        quality: 'sd' 
+      await exportPresentation('sess-123', {
+        format: 'pdf',
+        title: '我的演示',
+        quality: 'sd'
       });
-      
+
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(body.title).toBe('我的演示');
       expect(body.quality).toBe('sd');
+    });
+
+    it('should include numberingStyleId in body when provided', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({}),
+      });
+
+      await exportPresentation('sess-123', {
+        format: 'pptx',
+        numberingStyleId: 'numeric-dot',
+      });
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.numbering_style_id).toBe('numeric-dot');
+    });
+
+    it('should not include numbering_style_id when not provided', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({}),
+      });
+
+      await exportPresentation('sess-123', { format: 'pptx' });
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body).not.toHaveProperty('numbering_style_id');
     });
 
     it('should throw on error', async () => {

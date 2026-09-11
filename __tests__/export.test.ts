@@ -115,6 +115,36 @@ describe('export.ts', () => {
       ).rejects.toThrow('导出失败');
     });
 
+    it('should pass numberingStyleId to API when provided', async () => {
+      const { exportPresentationToFile } = await import('@/export');
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ filename: 'test.pptx', url: '/api/export/test.pptx', format: 'pptx' }),
+      });
+
+      await exportPresentationToFile([], { format: 'pptx', numberingStyleId: 'chinese-clause' }, 'session-1');
+
+      const callArgs = mockFetch.mock.calls[0][1];
+      const body = JSON.parse(callArgs.body);
+      expect(body.numbering_style_id).toBe('chinese-clause');
+    });
+
+    it('should not include numbering_style_id when not provided', async () => {
+      const { exportPresentationToFile } = await import('@/export');
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ filename: 'test.pptx', url: '/api/export/test.pptx', format: 'pptx' }),
+      });
+
+      await exportPresentationToFile([], { format: 'pptx' }, 'session-1');
+
+      const callArgs = mockFetch.mock.calls[0][1];
+      const body = JSON.parse(callArgs.body);
+      expect(body).not.toHaveProperty('numbering_style_id');
+    });
+
     it('should use default quality when not provided', async () => {
       const { exportPresentationToFile } = await import('@/export');
       

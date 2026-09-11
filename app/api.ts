@@ -124,6 +124,7 @@ export interface ExportOptions {
   format: 'pptx' | 'pdf' | 'png' | 'html';
   title?: string;
   quality?: 'hd' | 'sd';
+  numberingStyleId?: string;
 }
 
 export async function exportPresentation(
@@ -135,6 +136,7 @@ export async function exportPresentation(
     format: options.format,
     title: options.title || '演示文稿',
     quality: options.quality || 'hd',
+    ...(options.numberingStyleId && { numbering_style_id: options.numberingStyleId }),
   };
 
   const response = await fetch(`/api/export/${options.format}`, {
