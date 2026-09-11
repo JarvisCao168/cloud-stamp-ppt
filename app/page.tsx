@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import ModeSelector from './components/ModeSelector';
+import TemplateSelector from './components/TemplateSelector';
+import NumberingSelector from './components/NumberingSelector';
 import RevealContainer from './components/RevealContainer';
 import CheckpointPanel from './components/CheckpointPanel';
 import LoadingState from './components/LoadingState';
@@ -14,11 +16,18 @@ export default function Home() {
   const {
     mode, state, prompt, setPrompt, updateMode,
     generate, reset, checkpoints, updateCheckpoint, confirmCheckpoint,
-    sessionId,
+    sessionId, options, updateOptions, numberingStyles,
   } = useGeneration();
   const [activeSlide, setActiveSlide] = useState(0);
   const [exportingFormat, setExportingFormat] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [showNumberingSelector, setShowNumberingSelector] = useState(false);
+
+  // 获取已选模板名称用于显示
+  const selectedTemplateName = options.templateId
+    ? options.templateId
+    : '未选择模板';
 
   const currentModeConfig = MODE_CONFIG[mode];
 
@@ -36,7 +45,14 @@ export default function Home() {
     setExportingFormat(format);
     setExportError(null);
     try {
-      await exportPresentationToFile(state.slides || [], { format: format as 'pptx' | 'pdf' | 'png' | 'html' }, sessionId);
+      const numberingStyleId = options.numberingStyleId
+        ? options.numberingStyleId
+        : undefined;
+      await exportPresentationToFile(
+        state.slides || [],
+        { format: format as 'pptx' | 'pdf' | 'png' | 'html', numberingStyleId },
+        sessionId
+      );
     } catch (err) {
       setExportError(err instanceof Error ? err.message : '导出失败');
     } finally {
@@ -103,6 +119,83 @@ export default function Home() {
                   描述您想要创建的演示文稿内容，AI 将自动生成幻灯片
                 </p>
               </div>
+
+              {/* 模板与序号样式选择（仅掌控模式显示） */}
+              {mode === 'mastery' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowTemplateSelector(!showTemplateSelector);
+                        if (showNumberingSelector) setShowNumberingSelector(false);
+                      }}
+                      className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-left hover:border-blue-500 transition-colors"
+                    >
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        {options.templateId
+                          ? `已选模板: ${options.templateId}`
+                          : '选择模板 (可选)'}
+                      </span>
+                      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    {showTemplateSelector && (
+                      <div className="mt-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <TemplateSelector
+                          value={options.templateId}
+                          onChange={(id) => {
+                            updateOptions({ templateId: id });
+                            // 自动关联推荐的序号样式
+                            const autoNumbering: Record<string, string> = {
+                              'modern-dark': 'numeric-dot',
+                              'corporate-clean': 'numeric-dot',
+                              'futuristic-neon': 'icon-arrow',
+                              'minimal-light': 'chinese-clause',
+                              'nature-organic': 'graphic-bullet',
+                              'academic': 'chinese-paren',
+                            };
+                            const recommended = autoNumbering[id];
+                            if (recommended && !options.numberingStyleId) {
+                              updateOptions({ numberingStyleId: recommended });
+                            }
+                          }}
+                          showDescription
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNumberingSelector(!showNumberingSelector);
+                        if (showTemplateSelector) setShowTemplateSelector(false);
+                      }}
+                      className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-left hover:border-blue-500 transition-colors"
+                    >
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        {options.numberingStyleId
+                          ? `已选序号: ${options.numberingStyleId}`
+                          : '选择序号样式 (可选)'}
+                      </span>
+                      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    {showNumberingSelector && (
+                      <div className="mt-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <NumberingSelector
+                          value={options.numberingStyleId}
+                          onChange={(id) => updateOptions({ numberingStyleId: id })}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-3">

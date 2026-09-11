@@ -1,9 +1,14 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { PresentationMode, SlideData, GenerationState, Checkpoint } from '@/types';
-import { generateSlides, getCheckpointFlow, submitCheckpointAction } from './api';
+import { generateSlides, getCheckpointFlow, submitCheckpointAction, getAllAssets, NumberingStyle } from './api';
 import { saveCheckpoint, clearAllCheckpoints } from './checkpoints';
+
+export interface GenerationOptions {
+  templateId?: string;
+  numberingStyleId?: string;
+}
 
 export function useGeneration() {
   const [mode, setMode] = useState<PresentationMode>('rapid');
@@ -11,10 +16,43 @@ export function useGeneration() {
   const [prompt, setPrompt] = useState('');
   const [checkpoints, setCheckpoints] = useState<Map<string, Checkpoint>>(new Map());
   const [sessionId, setSessionId] = useState<string>('');
+  const [options, setOptions] = useState<GenerationOptions>({});
+  const [numberingStyles, setNumberingStyles] = useState<NumberingStyle[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+
+  // 加载序号样式列表（用于模板联动时的推荐）
+  useEffect(() => {
+    getAllAssets()
+      .then((data) => {
+        setNumberingStyles(data.numberingStyles || []);
+      })
+      .catch(() => {
+        // 静默失败，不影响主流程
+      });
+  }, []);
 
   const updateMode = useCallback((newMode: PresentationMode) => {
     setMode(newMode);
+  }, []);
+
+  const updateOptions = useCallback((newOptions: Partial<GenerationOptions>) => {
+    setOptions(prev => ({ ...prev, ...newOptions }));
+  }, []);
+
+  /**
+   * 根据模板 ID 获取推荐的序号样式 ID
+   */
+  const getRecommendedNumberingId = useCallback((templateId: string): string | undefined => {
+    // 优先级样式映射（前端兜底，实际由后端 API 提供）
+    const templateNumberingMap: Record<string, string> = {
+      'modern-dark': 'numeric-dot',
+      'corporate-clean': 'numeric-dot',
+      'futuristic-neon': 'icon-arrow',
+      'minimal-light': 'chinese-clause',
+      'nature-organic': 'graphic-bullet',
+      'academic': 'chinese-paren',
+    };
+    return templateNumberingMap[templateId];
   }, []);
 
   const generate = useCallback(async () => {
@@ -113,7 +151,7 @@ export function useGeneration() {
         error: err instanceof Error ? err.message : '生成失败，请检查后端服务是否启动',
       });
     }
-  }, [prompt, mode]);
+  }, [prompt, mode, getRecommendedNumberingId]);
 
   /**
    * 更新单个检查点状态
@@ -140,6 +178,19 @@ export function useGeneration() {
       updateCheckpoint(checkpointId, 'completed');
       return;
     }
+
+    // 处理模板选择检查点的特殊逻辑
+    if (checkpointId === 'template_selection' && action === 'select') {
+      const templateData = checkpoints.get(checkpointId)?.data as { templateId?: string } | undefined;
+      if (templateData?.templateId) {
+        // 自动关联推荐的序号样式
+        const recommendedId = getRecommendedNumberingId(templateData.templateId);
+        if (recommendedId && !options.numberingStyleId) {
+          setOptions(prev => ({ ...prev, numberingStyleId: recommendedId }));
+        }
+      }
+    }
+
     try {
       const result = await submitCheckpointAction({
         session_id: sessionId,
@@ -165,7 +216,7 @@ export function useGeneration() {
     } catch (err) {
       console.error('Checkpoint action failed:', err);
     }
-  }, [sessionId, updateCheckpoint]);
+  }, [sessionId, updateCheckpoint, checkpoints, options, getRecommendedNumberingId]);
 
   /**
    * 重置状态
@@ -174,6 +225,7 @@ export function useGeneration() {
     setPrompt('');
     setState({ status: 'idle' });
     setSessionId('');
+    setOptions({});
     clearAllCheckpoints();
     setCheckpoints(new Map());
     abortRef.current?.abort();
@@ -191,5 +243,8 @@ export function useGeneration() {
     updateCheckpoint,
     confirmCheckpoint,
     sessionId,
+    options,
+    updateOptions,
+    numberingStyles,
   };
 }

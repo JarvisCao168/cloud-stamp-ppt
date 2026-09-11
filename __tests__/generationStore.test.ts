@@ -5,7 +5,23 @@ import { Checkpoint } from '@/types';
 import * as apiModule from '@/api';
 import * as checkpointsModule from '@/checkpoints';
 
-vi.mock('@/api');
+vi.mock('@/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api')>();
+  return {
+    ...actual,
+    generateSlides: vi.fn(),
+    getCheckpointFlow: vi.fn(),
+    submitCheckpointAction: vi.fn(),
+    getAllAssets: vi.fn().mockResolvedValue({
+      templates: [],
+      color_schemes: [],
+      layouts: [],
+      fonts: [],
+      animations: [],
+      numbering_styles: [],
+    }),
+  };
+});
 vi.mock('@/checkpoints');
 
 describe('useGeneration hook', () => {

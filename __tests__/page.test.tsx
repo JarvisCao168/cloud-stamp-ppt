@@ -36,6 +36,9 @@ const baseStore = {
   updateCheckpoint: vi.fn(),
   confirmCheckpoint: vi.fn(),
   sessionId: '',
+  options: {},
+  updateOptions: vi.fn(),
+  numberingStyles: [],
 };
 
 describe('Home (page.tsx) Integration Tests', () => {
@@ -138,6 +141,56 @@ describe('Home (page.tsx) Integration Tests', () => {
     await fireEvent.click(htmlBtn);
     await waitFor(() => {
       expect(exportModule.exportPresentationToFile).toHaveBeenCalled();
+    });
+  });
+
+  it('passes numberingStyleId to export when options contain it', async () => {
+    const store = {
+      ...baseStore,
+      state: { status: 'success', slides: [{ title: 'T', content: 'C' }] },
+      sessionId: 'session-789',
+      options: { numberingStyleId: 'numeric-dot' },
+    };
+    mockUseGeneration.mockReturnValue(store);
+    (exportModule.exportPresentationToFile as ReturnType<typeof vi.fn>).mockResolvedValue({
+      filename: 'test.pptx',
+      url: '#',
+      format: 'pptx',
+    });
+    render(<Home />);
+    const pptxBtn = screen.getByRole('button', { name: /PPTX/i });
+    await fireEvent.click(pptxBtn);
+    await waitFor(() => {
+      expect(exportModule.exportPresentationToFile).toHaveBeenCalledWith(
+        expect.arrayContaining([{ title: 'T', content: 'C' }]),
+        expect.objectContaining({ numberingStyleId: 'numeric-dot' }),
+        'session-789'
+      );
+    });
+  });
+
+  it('passes undefined numberingStyleId when not selected', async () => {
+    const store = {
+      ...baseStore,
+      state: { status: 'success', slides: [{ title: 'T', content: 'C' }] },
+      sessionId: 'session-no-num',
+      options: {},
+    };
+    mockUseGeneration.mockReturnValue(store);
+    (exportModule.exportPresentationToFile as ReturnType<typeof vi.fn>).mockResolvedValue({
+      filename: 'test.pptx',
+      url: '#',
+      format: 'pptx',
+    });
+    render(<Home />);
+    const pptxBtn = screen.getByRole('button', { name: /PPTX/i });
+    await fireEvent.click(pptxBtn);
+    await waitFor(() => {
+      expect(exportModule.exportPresentationToFile).toHaveBeenCalledWith(
+        expect.arrayContaining([{ title: 'T', content: 'C' }]),
+        expect.objectContaining({ numberingStyleId: undefined }),
+        'session-no-num'
+      );
     });
   });
 
