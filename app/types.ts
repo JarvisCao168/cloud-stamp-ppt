@@ -23,6 +23,7 @@ export interface GenerationState {
   slides?: SlideData[];
   error?: string;
   progress?: number;
+  keepOriginal?: boolean;
 }
 
 export interface ExportFormat {

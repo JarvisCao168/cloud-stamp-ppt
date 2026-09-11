@@ -1,0 +1,1692 @@
+{
+  "metadata": {
+    "total_templates": 120,
+    "categories_covered": 25,
+    "analysis_date": "2026-09-11",
+    "source_dir": "F:\\ppt模板"
+  },
+  "color_palette": {
+    "#FFFFFF": {
+      "hex": "#FFFFFF",
+      "usage_count": 28,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#C00000": {
+      "hex": "#C00000",
+      "usage_count": 10,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#0070C0": {
+      "hex": "#0070C0",
+      "usage_count": 10,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#000000": {
+      "hex": "#000000",
+      "usage_count": 6,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#00B0F0": {
+      "hex": "#00B0F0",
+      "usage_count": 5,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#FF0000": {
+      "hex": "#FF0000",
+      "usage_count": 4,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#FFC000": {
+      "hex": "#FFC000",
+      "usage_count": 4,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#F8F8F8": {
+      "hex": "#F8F8F8",
+      "usage_count": 3,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#F9F9F9": {
+      "hex": "#F9F9F9",
+      "usage_count": 3,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#A6A6A6": {
+      "hex": "#A6A6A6",
+      "usage_count": 3,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#ADBACA": {
+      "hex": "#ADBACA",
+      "usage_count": 3,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#DCDCDC": {
+      "hex": "#DCDCDC",
+      "usage_count": 2,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#D7D7D7": {
+      "hex": "#D7D7D7",
+      "usage_count": 2,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#CCCC33": {
+      "hex": "#CCCC33",
+      "usage_count": 2,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#F6F6F6": {
+      "hex": "#F6F6F6",
+      "usage_count": 2,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#7F7F7F": {
+      "hex": "#7F7F7F",
+      "usage_count": 2,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#9BBB59": {
+      "hex": "#9BBB59",
+      "usage_count": 2,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#DFDFE1": {
+      "hex": "#DFDFE1",
+      "usage_count": 2,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#01ACBE": {
+      "hex": "#01ACBE",
+      "usage_count": 2,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#FFB850": {
+      "hex": "#FFB850",
+      "usage_count": 2,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#663A77": {
+      "hex": "#663A77",
+      "usage_count": 2,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#E87071": {
+      "hex": "#E87071",
+      "usage_count": 2,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#504D47": {
+      "hex": "#504D47",
+      "usage_count": 1,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#E1E8F0": {
+      "hex": "#E1E8F0",
+      "usage_count": 1,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#3C3939": {
+      "hex": "#3C3939",
+      "usage_count": 1,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#9EB5CE": {
+      "hex": "#9EB5CE",
+      "usage_count": 1,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#DEDEDF": {
+      "hex": "#DEDEDF",
+      "usage_count": 1,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#73AA93": {
+      "hex": "#73AA93",
+      "usage_count": 1,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#EBBE1D": {
+      "hex": "#EBBE1D",
+      "usage_count": 1,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "#D75D00": {
+      "hex": "#D75D00",
+      "usage_count": 1,
+      "category": "通用",
+      "tags": [
+        "数据分析提取"
+      ]
+    }
+  },
+  "font_library": {
+    "微软雅黑": {
+      "name": "微软雅黑",
+      "usage_count": 73,
+      "type": "中文",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "Arial": {
+      "name": "Arial",
+      "usage_count": 37,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "Impact": {
+      "name": "Impact",
+      "usage_count": 19,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "Calibri": {
+      "name": "Calibri",
+      "usage_count": 15,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "+mn-ea": {
+      "name": "+mn-ea",
+      "usage_count": 12,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "Agency FB": {
+      "name": "Agency FB",
+      "usage_count": 10,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "+mj-lt": {
+      "name": "+mj-lt",
+      "usage_count": 9,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "+mj-ea": {
+      "name": "+mj-ea",
+      "usage_count": 9,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "幼圆": {
+      "name": "幼圆",
+      "usage_count": 7,
+      "type": "中文",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "+mn-lt": {
+      "name": "+mn-lt",
+      "usage_count": 5,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "微软雅黑 Light": {
+      "name": "微软雅黑 Light",
+      "usage_count": 4,
+      "type": "中文",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "Calibri Light": {
+      "name": "Calibri Light",
+      "usage_count": 4,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "Arial Black": {
+      "name": "Arial Black",
+      "usage_count": 4,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "方正姚体": {
+      "name": "方正姚体",
+      "usage_count": 4,
+      "type": "中文",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "汉仪菱心体简": {
+      "name": "汉仪菱心体简",
+      "usage_count": 4,
+      "type": "中文",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "Century Gothic": {
+      "name": "Century Gothic",
+      "usage_count": 4,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "方正清刻本悦宋简体": {
+      "name": "方正清刻本悦宋简体",
+      "usage_count": 4,
+      "type": "中文",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "Arial Unicode MS": {
+      "name": "Arial Unicode MS",
+      "usage_count": 3,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "Broadway": {
+      "name": "Broadway",
+      "usage_count": 3,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "华文细黑": {
+      "name": "华文细黑",
+      "usage_count": 3,
+      "type": "中文",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "字魂36号-正文宋楷": {
+      "name": "字魂36号-正文宋楷",
+      "usage_count": 3,
+      "type": "中文",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "字魂59号-创粗黑": {
+      "name": "字魂59号-创粗黑",
+      "usage_count": 3,
+      "type": "中文",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "思源黑体旧字形 Normal": {
+      "name": "思源黑体旧字形 Normal",
+      "usage_count": 3,
+      "type": "中文",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "Lato": {
+      "name": "Lato",
+      "usage_count": 3,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "Source Sans Pro": {
+      "name": "Source Sans Pro",
+      "usage_count": 3,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "Lato Black": {
+      "name": "Lato Black",
+      "usage_count": 3,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "思源黑体 CN Normal": {
+      "name": "思源黑体 CN Normal",
+      "usage_count": 2,
+      "type": "中文",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "宋体": {
+      "name": "宋体",
+      "usage_count": 2,
+      "type": "中文",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "Franklin Gothic Book": {
+      "name": "Franklin Gothic Book",
+      "usage_count": 2,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    },
+    "Dotum": {
+      "name": "Dotum",
+      "usage_count": 2,
+      "type": "英文/其他",
+      "tags": [
+        "数据分析提取"
+      ]
+    }
+  },
+  "layout_patterns": {},
+  "category_profiles": {
+    "01 详情展示": {
+      "total_templates": 5,
+      "avg_slides": 15.2,
+      "top_colors": [
+        {
+          "hex": "#504D47",
+          "count": 1
+        },
+        {
+          "hex": "#E1E8F0",
+          "count": 1
+        },
+        {
+          "hex": "#3C3939",
+          "count": 1
+        },
+        {
+          "hex": "#9EB5CE",
+          "count": 1
+        },
+        {
+          "hex": "#DEDEDF",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "微软雅黑",
+          "count": 1
+        },
+        {
+          "name": "Andalus",
+          "count": 1
+        },
+        {
+          "name": "汉仪君黑-45简",
+          "count": 1
+        },
+        {
+          "name": "汉仪文黑-55简",
+          "count": 1
+        },
+        {
+          "name": "+mj-lt",
+          "count": 1
+        }
+      ]
+    },
+    "10欧美风格": {
+      "total_templates": 3,
+      "avg_slides": 24.666666666666668,
+      "top_colors": [
+        {
+          "hex": "#354B5E",
+          "count": 1
+        },
+        {
+          "hex": "#D5B07C",
+          "count": 1
+        },
+        {
+          "hex": "#D5D5D5",
+          "count": 1
+        },
+        {
+          "hex": "#F15B29",
+          "count": 1
+        },
+        {
+          "hex": "#FFFFFF",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "Arial",
+          "count": 2
+        },
+        {
+          "name": "微软雅黑",
+          "count": 1
+        },
+        {
+          "name": "微软雅黑 Light",
+          "count": 1
+        },
+        {
+          "name": "印品黑体",
+          "count": 1
+        },
+        {
+          "name": "Calibri Light",
+          "count": 1
+        }
+      ]
+    },
+    "11培训课件": {
+      "total_templates": 5,
+      "avg_slides": 40.6,
+      "top_colors": [
+        {
+          "hex": "#F9F9F9",
+          "count": 2
+        },
+        {
+          "hex": "#DCDCDC",
+          "count": 2
+        },
+        {
+          "hex": "#D7D7D7",
+          "count": 2
+        },
+        {
+          "hex": "#E74C2E",
+          "count": 1
+        },
+        {
+          "hex": "#EAEAEA",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "微软雅黑",
+          "count": 5
+        },
+        {
+          "name": "Impact",
+          "count": 3
+        },
+        {
+          "name": "Arial Unicode MS",
+          "count": 2
+        },
+        {
+          "name": "+mn-ea",
+          "count": 1
+        },
+        {
+          "name": "宋体",
+          "count": 1
+        }
+      ]
+    },
+    "12扁平风格": {
+      "total_templates": 5,
+      "avg_slides": 23.8,
+      "top_colors": [
+        {
+          "hex": "#FFFFFF",
+          "count": 4
+        },
+        {
+          "hex": "#CCCC33",
+          "count": 2
+        },
+        {
+          "hex": "#FF6969",
+          "count": 1
+        },
+        {
+          "hex": "#FFC000",
+          "count": 1
+        },
+        {
+          "hex": "#FFFA19",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "微软雅黑",
+          "count": 5
+        },
+        {
+          "name": "Arial",
+          "count": 3
+        },
+        {
+          "name": "Agency FB",
+          "count": 2
+        },
+        {
+          "name": "Calibri",
+          "count": 1
+        },
+        {
+          "name": "Franklin Gothic Book",
+          "count": 1
+        }
+      ]
+    },
+    "13快闪风格": {
+      "total_templates": 5,
+      "avg_slides": 41.8,
+      "top_colors": [
+        {
+          "hex": "#FF5050",
+          "count": 1
+        },
+        {
+          "hex": "#D1F8CC",
+          "count": 1
+        },
+        {
+          "hex": "#16B39E",
+          "count": 1
+        },
+        {
+          "hex": "#0C0F1F",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "微软雅黑",
+          "count": 3
+        },
+        {
+          "name": "Bebas Neue",
+          "count": 2
+        },
+        {
+          "name": "方正兰亭特黑简体",
+          "count": 1
+        },
+        {
+          "name": "迷你简菱心",
+          "count": 1
+        },
+        {
+          "name": "Bell MT",
+          "count": 1
+        }
+      ]
+    },
+    "14项目策划": {
+      "total_templates": 5,
+      "avg_slides": 31.4,
+      "top_colors": [
+        {
+          "hex": "#0C86B6",
+          "count": 1
+        },
+        {
+          "hex": "#269FD3",
+          "count": 1
+        },
+        {
+          "hex": "#A6A6A6",
+          "count": 1
+        },
+        {
+          "hex": "#0F3D4C",
+          "count": 1
+        },
+        {
+          "hex": "#777370",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "微软雅黑",
+          "count": 5
+        },
+        {
+          "name": "Arial",
+          "count": 3
+        },
+        {
+          "name": "Calibri",
+          "count": 3
+        },
+        {
+          "name": "Impact",
+          "count": 2
+        },
+        {
+          "name": "Roboto",
+          "count": 2
+        }
+      ]
+    },
+    "15开题报告": {
+      "total_templates": 5,
+      "avg_slides": 24.2,
+      "top_colors": [
+        {
+          "hex": "#000000",
+          "count": 2
+        },
+        {
+          "hex": "#4A4E98",
+          "count": 1
+        },
+        {
+          "hex": "#EEC618",
+          "count": 1
+        },
+        {
+          "hex": "#A3A3A0",
+          "count": 1
+        },
+        {
+          "hex": "#B1B3C6",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "字魂36号-正文宋楷",
+          "count": 1
+        },
+        {
+          "name": "字魂59号-创粗黑",
+          "count": 1
+        },
+        {
+          "name": "字魂95号-手刻宋",
+          "count": 1
+        },
+        {
+          "name": "Arial",
+          "count": 1
+        },
+        {
+          "name": "思源黑体",
+          "count": 1
+        }
+      ]
+    },
+    "16创意风格": {
+      "total_templates": 5,
+      "avg_slides": 22.2,
+      "top_colors": [
+        {
+          "hex": "#FFFFFF",
+          "count": 2
+        },
+        {
+          "hex": "#F17831",
+          "count": 1
+        },
+        {
+          "hex": "#D76E17",
+          "count": 1
+        },
+        {
+          "hex": "#C8B574",
+          "count": 1
+        },
+        {
+          "hex": "#00589C",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "微软雅黑",
+          "count": 5
+        },
+        {
+          "name": "+mj-lt",
+          "count": 2
+        },
+        {
+          "name": "Open Sans",
+          "count": 2
+        },
+        {
+          "name": "微软雅黑 Light",
+          "count": 1
+        },
+        {
+          "name": "黑体",
+          "count": 1
+        }
+      ]
+    },
+    "17自我介绍": {
+      "total_templates": 5,
+      "avg_slides": 13.6,
+      "top_colors": [
+        {
+          "hex": "#FFFFFF",
+          "count": 2
+        },
+        {
+          "hex": "#99BF4F",
+          "count": 1
+        },
+        {
+          "hex": "#1CA854",
+          "count": 1
+        },
+        {
+          "hex": "#ED4452",
+          "count": 1
+        },
+        {
+          "hex": "#F28B51",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "迷你简卡通",
+          "count": 2
+        },
+        {
+          "name": "微软雅黑",
+          "count": 2
+        },
+        {
+          "name": "汉仪菱心体简",
+          "count": 2
+        },
+        {
+          "name": "方正琥珀简体",
+          "count": 1
+        },
+        {
+          "name": "方正喵呜体",
+          "count": 1
+        }
+      ]
+    },
+    "19企业宣传": {
+      "total_templates": 5,
+      "avg_slides": 27.2,
+      "top_colors": [
+        {
+          "hex": "#A6A6A6",
+          "count": 1
+        },
+        {
+          "hex": "#0070C0",
+          "count": 1
+        },
+        {
+          "hex": "#00A1DA",
+          "count": 1
+        },
+        {
+          "hex": "#7F7F7F",
+          "count": 1
+        },
+        {
+          "hex": "#00B0F0",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "Arial",
+          "count": 4
+        },
+        {
+          "name": "微软雅黑",
+          "count": 3
+        },
+        {
+          "name": "Chaparral Pro",
+          "count": 1
+        },
+        {
+          "name": "幼圆",
+          "count": 1
+        },
+        {
+          "name": "+mn-lt",
+          "count": 1
+        }
+      ]
+    },
+    "1莫兰迪PPT": {
+      "total_templates": 5,
+      "avg_slides": 17.0,
+      "top_colors": [
+        {
+          "hex": "#486553",
+          "count": 1
+        },
+        {
+          "hex": "#679378",
+          "count": 1
+        },
+        {
+          "hex": "#FFFFFF",
+          "count": 1
+        },
+        {
+          "hex": "#FFFEF9",
+          "count": 1
+        },
+        {
+          "hex": "#000000",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "汉仪字酷堂义山楷W",
+          "count": 2
+        },
+        {
+          "name": "思源黑体旧字形 Normal",
+          "count": 2
+        },
+        {
+          "name": "思源黑体 CN Normal",
+          "count": 1
+        },
+        {
+          "name": "思源黑体 CN ExtraLight",
+          "count": 1
+        },
+        {
+          "name": "思源黑体旧字形 ExtraLight",
+          "count": 1
+        }
+      ]
+    },
+    "20时尚风格": {
+      "total_templates": 5,
+      "avg_slides": 40.2,
+      "top_colors": [
+        {
+          "hex": "#C5AF76",
+          "count": 1
+        },
+        {
+          "hex": "#FFFFFF",
+          "count": 1
+        },
+        {
+          "hex": "#9DD6C8",
+          "count": 1
+        },
+        {
+          "hex": "#E5D8C8",
+          "count": 1
+        },
+        {
+          "hex": "#5B6155",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "Lato",
+          "count": 3
+        },
+        {
+          "name": "Source Sans Pro",
+          "count": 3
+        },
+        {
+          "name": "Source Sans Pro Semibold",
+          "count": 2
+        },
+        {
+          "name": "Lato Black",
+          "count": 2
+        },
+        {
+          "name": "Playfair Display",
+          "count": 1
+        }
+      ]
+    },
+    "21述职报告": {
+      "total_templates": 5,
+      "avg_slides": 25.2,
+      "top_colors": [
+        {
+          "hex": "#D9D9D9",
+          "count": 1
+        },
+        {
+          "hex": "#B2B2B2",
+          "count": 1
+        },
+        {
+          "hex": "#1F74AD",
+          "count": 1
+        },
+        {
+          "hex": "#0070C0",
+          "count": 1
+        },
+        {
+          "hex": "#3498DB",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "思源黑体旧字形 ExtraLight",
+          "count": 1
+        },
+        {
+          "name": "思源黑体 CN Bold",
+          "count": 1
+        },
+        {
+          "name": "Arial",
+          "count": 1
+        },
+        {
+          "name": "微软雅黑",
+          "count": 1
+        },
+        {
+          "name": "+mn-ea",
+          "count": 1
+        }
+      ]
+    },
+    "22图标系列": {
+      "total_templates": 5,
+      "avg_slides": 112.6,
+      "top_colors": [
+        {
+          "hex": "#01ACBE",
+          "count": 2
+        },
+        {
+          "hex": "#FFB850",
+          "count": 2
+        },
+        {
+          "hex": "#663A77",
+          "count": 2
+        },
+        {
+          "hex": "#E87071",
+          "count": 2
+        },
+        {
+          "hex": "#FFFFFF",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "微软雅黑",
+          "count": 4
+        },
+        {
+          "name": "Arial",
+          "count": 2
+        },
+        {
+          "name": "Impact",
+          "count": 2
+        },
+        {
+          "name": "时尚中黑简体",
+          "count": 2
+        },
+        {
+          "name": "MS PMincho",
+          "count": 1
+        }
+      ]
+    },
+    "23图表风格": {
+      "total_templates": 5,
+      "avg_slides": 25.0,
+      "top_colors": [
+        {
+          "hex": "#FFC000",
+          "count": 2
+        },
+        {
+          "hex": "#20BA7C",
+          "count": 1
+        },
+        {
+          "hex": "#4CC1D0",
+          "count": 1
+        },
+        {
+          "hex": "#2ABD82",
+          "count": 1
+        },
+        {
+          "hex": "#54C3D1",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "微软雅黑",
+          "count": 4
+        },
+        {
+          "name": "Calibri",
+          "count": 2
+        },
+        {
+          "name": "方正正纤黑简体",
+          "count": 2
+        },
+        {
+          "name": "Arial",
+          "count": 2
+        },
+        {
+          "name": "Droid Sans",
+          "count": 1
+        }
+      ]
+    },
+    "24相册纪念": {
+      "total_templates": 2,
+      "avg_slides": 16.5,
+      "top_colors": [
+        {
+          "hex": "#FFFFFF",
+          "count": 1
+        },
+        {
+          "hex": "#FCAA1A",
+          "count": 1
+        },
+        {
+          "hex": "#EA001E",
+          "count": 1
+        },
+        {
+          "hex": "#C00000",
+          "count": 1
+        },
+        {
+          "hex": "#F07057",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "微软雅黑",
+          "count": 2
+        },
+        {
+          "name": "华文新魏",
+          "count": 1
+        },
+        {
+          "name": "Calibri",
+          "count": 1
+        },
+        {
+          "name": "经典细圆简",
+          "count": 1
+        },
+        {
+          "name": "027-CAI978",
+          "count": 1
+        }
+      ]
+    },
+    "25星空风格": {
+      "total_templates": 5,
+      "avg_slides": 25.6,
+      "top_colors": [
+        {
+          "hex": "#FFFFFF",
+          "count": 3
+        },
+        {
+          "hex": "#A6A6A6",
+          "count": 1
+        },
+        {
+          "hex": "#FCA82C",
+          "count": 1
+        },
+        {
+          "hex": "#C35954",
+          "count": 1
+        },
+        {
+          "hex": "#1B2955",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "微软雅黑",
+          "count": 5
+        },
+        {
+          "name": "Impact",
+          "count": 3
+        },
+        {
+          "name": "Arial",
+          "count": 2
+        },
+        {
+          "name": "Calibri",
+          "count": 2
+        },
+        {
+          "name": "Broadway",
+          "count": 1
+        }
+      ]
+    },
+    "2极简风格": {
+      "total_templates": 5,
+      "avg_slides": 23.4,
+      "top_colors": [
+        {
+          "hex": "#404040",
+          "count": 1
+        },
+        {
+          "hex": "#EB7513",
+          "count": 1
+        },
+        {
+          "hex": "#0070C0",
+          "count": 1
+        },
+        {
+          "hex": "#888886",
+          "count": 1
+        },
+        {
+          "hex": "#949AB2",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "微软雅黑",
+          "count": 3
+        },
+        {
+          "name": "+mn-ea",
+          "count": 2
+        },
+        {
+          "name": "造字工房悦黑体验版细体",
+          "count": 1
+        },
+        {
+          "name": "Aldhabi",
+          "count": 1
+        },
+        {
+          "name": "Source Han Sans CN",
+          "count": 1
+        }
+      ]
+    },
+    "3工作汇报": {
+      "total_templates": 5,
+      "avg_slides": 29.0,
+      "top_colors": [
+        {
+          "hex": "#FFFFFF",
+          "count": 2
+        },
+        {
+          "hex": "#0070C0",
+          "count": 1
+        },
+        {
+          "hex": "#FFC000",
+          "count": 1
+        },
+        {
+          "hex": "#7F7F7F",
+          "count": 1
+        },
+        {
+          "hex": "#217BFF",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "微软雅黑",
+          "count": 3
+        },
+        {
+          "name": "Calibri",
+          "count": 2
+        },
+        {
+          "name": "Arial",
+          "count": 2
+        },
+        {
+          "name": "+mn-ea",
+          "count": 2
+        },
+        {
+          "name": "方正粗谭黑简体",
+          "count": 1
+        }
+      ]
+    },
+    "4毕业答辩": {
+      "total_templates": 5,
+      "avg_slides": 26.6,
+      "top_colors": [
+        {
+          "hex": "#FFFFFF",
+          "count": 2
+        },
+        {
+          "hex": "#E0A9CB",
+          "count": 1
+        },
+        {
+          "hex": "#F6F6F6",
+          "count": 1
+        },
+        {
+          "hex": "#262626",
+          "count": 1
+        },
+        {
+          "hex": "#48AFDA",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "微软雅黑",
+          "count": 4
+        },
+        {
+          "name": "Impact",
+          "count": 3
+        },
+        {
+          "name": "Agency FB",
+          "count": 2
+        },
+        {
+          "name": "华文细黑",
+          "count": 1
+        },
+        {
+          "name": "方正兰亭粗黑简体",
+          "count": 1
+        }
+      ]
+    },
+    "5高端商务": {
+      "total_templates": 5,
+      "avg_slides": 24.4,
+      "top_colors": [
+        {
+          "hex": "#C00000",
+          "count": 2
+        },
+        {
+          "hex": "#BB1C14",
+          "count": 1
+        },
+        {
+          "hex": "#2B459C",
+          "count": 1
+        },
+        {
+          "hex": "#7F6E96",
+          "count": 1
+        },
+        {
+          "hex": "#0070C0",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "微软雅黑",
+          "count": 4
+        },
+        {
+          "name": "Arial",
+          "count": 4
+        },
+        {
+          "name": "Calibri",
+          "count": 2
+        },
+        {
+          "name": "方正姚体",
+          "count": 1
+        },
+        {
+          "name": "Impact",
+          "count": 1
+        }
+      ]
+    },
+    "6中国风格": {
+      "total_templates": 5,
+      "avg_slides": 24.6,
+      "top_colors": [
+        {
+          "hex": "#C00000",
+          "count": 3
+        },
+        {
+          "hex": "#448377",
+          "count": 1
+        },
+        {
+          "hex": "#E8E7E3",
+          "count": 1
+        },
+        {
+          "hex": "#C62A2C",
+          "count": 1
+        },
+        {
+          "hex": "#500000",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "方正清刻本悦宋简体",
+          "count": 3
+        },
+        {
+          "name": "+mj-ea",
+          "count": 2
+        },
+        {
+          "name": "微软雅黑",
+          "count": 2
+        },
+        {
+          "name": "+mn-ea",
+          "count": 2
+        },
+        {
+          "name": "TypeLand 康熙字典體",
+          "count": 2
+        }
+      ]
+    },
+    "7教师课件": {
+      "total_templates": 5,
+      "avg_slides": 24.4,
+      "top_colors": [
+        {
+          "hex": "#FFFFFF",
+          "count": 2
+        },
+        {
+          "hex": "#ADBACA",
+          "count": 1
+        },
+        {
+          "hex": "#0097A2",
+          "count": 1
+        },
+        {
+          "hex": "#288DBB",
+          "count": 1
+        },
+        {
+          "hex": "#12B19F",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "Arial",
+          "count": 3
+        },
+        {
+          "name": "微软雅黑",
+          "count": 3
+        },
+        {
+          "name": "幼圆",
+          "count": 2
+        },
+        {
+          "name": "Impact",
+          "count": 2
+        },
+        {
+          "name": "字魂59号-创粗黑",
+          "count": 1
+        }
+      ]
+    },
+    "8简历求职": {
+      "total_templates": 5,
+      "avg_slides": 26.6,
+      "top_colors": [
+        {
+          "hex": "#2ABDC7",
+          "count": 1
+        },
+        {
+          "hex": "#4C4B50",
+          "count": 1
+        },
+        {
+          "hex": "#2DB2A4",
+          "count": 1
+        },
+        {
+          "hex": "#FEFEFE",
+          "count": 1
+        },
+        {
+          "hex": "#BF0104",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "微软雅黑",
+          "count": 3
+        },
+        {
+          "name": "Agency FB",
+          "count": 2
+        },
+        {
+          "name": "幼圆",
+          "count": 1
+        },
+        {
+          "name": "Arial Rounded MT Bold",
+          "count": 1
+        },
+        {
+          "name": "Bebas",
+          "count": 1
+        }
+      ]
+    },
+    "9清新文艺": {
+      "total_templates": 5,
+      "avg_slides": 31.0,
+      "top_colors": [
+        {
+          "hex": "#29B9A6",
+          "count": 1
+        },
+        {
+          "hex": "#F8D35E",
+          "count": 1
+        },
+        {
+          "hex": "#F47264",
+          "count": 1
+        },
+        {
+          "hex": "#84CBC5",
+          "count": 1
+        },
+        {
+          "hex": "#FFC20F",
+          "count": 1
+        }
+      ],
+      "top_fonts": [
+        {
+          "name": "微软雅黑",
+          "count": 3
+        },
+        {
+          "name": "Arial",
+          "count": 1
+        },
+        {
+          "name": "迷你简汉真广标",
+          "count": 1
+        },
+        {
+          "name": "Montserrat",
+          "count": 1
+        },
+        {
+          "name": "+mn-lt",
+          "count": 1
+        }
+      ]
+    }
+  },
+  "template_entries": []
+}

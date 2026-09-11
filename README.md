@@ -144,6 +144,24 @@ docker-compose up -d
 # 后端: http://localhost:8000
 ```
 
+## 文档索引
+
+### 核心文档
+- `README.md` — 项目概览与快速开始
+- `DEVELOPMENT.md` — 开发规范与架构说明
+- `TEAM-CHARTER.md` — 团队章程与协作规则
+- `STATUS.md` — 当前状态与进度追踪
+- `TODOLIST.md` — 任务清单
+- `BLOCKERS.md` — 阻塞问题记录
+
+### 研究文档（docs/）
+- `competitive-analysis-v2.md` — 竞品分析报告（Kimi PPT 8.3分登顶）
+- `kimi-ppt-review.md` — Kimi PPT 详细评测
+- `ai-ppt-competitive-analysis.md` — AI PPT 竞品综合分析
+- `market-research-report-integrated.md` — 市场调研综合报告
+- `user-feedback-summary-round4.md` — 用户反馈总结（170+条）
+- `user-feedback-raw.csv` — 原始反馈数据
+
 ## 团队
 
 | 成员 | 角色 | 职责 |

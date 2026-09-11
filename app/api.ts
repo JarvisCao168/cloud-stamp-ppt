@@ -40,15 +40,18 @@ export interface CheckpointAction {
  */
 export async function generateSlides(
   prompt: string,
-  mode: PresentationMode
+  mode: PresentationMode,
+  options?: { keepOriginal?: boolean }
 ): Promise<GenerationResult> {
+  const body: Record<string, unknown> = {
+    user_input: prompt,
+    mode: MODE_MAP[mode],
+    keep_original: options?.keepOriginal || false,
+  };
   const response = await fetch('/api/generation/create', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      user_input: prompt,
-      mode: MODE_MAP[mode],
-    }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(30_000),
   });
 

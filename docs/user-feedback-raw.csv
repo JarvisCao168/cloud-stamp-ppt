@@ -1,4 +1,4 @@
-序号,来源平台,原文链接,用户原文,情绪标签,痛点分类,竞品提及,建议功能,采集时间
+﻿序号,来源平台,原文链接,用户原文,情绪标签,痛点分类,竞品提及,建议功能,采集时间
 1,B站/HN,(外部),Slides can be exported to HTML and viewed locally, but must be edited via the SlideHero interface. I considered exporting to PowerPoint, but there are just too many features like the quizzes and cloze activities that are just not possible to export to another tool.,负面,导出格式,SlideHero,支持导出PPTX格式;保留编辑能力,2026-09-10
 2,Hacker News,https://news.ycombinator.com/item?id=47233397,If AI is great at HTML/CSS, why are AI presentation/CV tools template based? Most AI resume and presentation tools work like: AI -> pick a template -> fill in content.,负面,个性化,通用,直接生成HTML/CSS而非依赖模板,2026-09-10
 3,Hacker News,https://ppt.ai,At my previous company, I spent countless hours creating presentations weekly. For one important client proposal, I pulled two consecutive all-nighters.,负面,工作流,通用,自动化减少重复劳动,2026-09-10
@@ -148,3 +148,24 @@
 163,技术社区,https://hub.baai.ac.cn/view/52601,阿里千问PPT生成效果好，但复杂字体生成会出错,中性,生成质量,千问,提升字体渲染能力,2026-09-10
 164,技术社区,https://hub.baai.ac.cn/view/52601,AI在视觉生成时文字可能出现变形、结构错位,负面,生成质量,通用,提升文字渲染准确性,2026-09-10
 165,WPS官网,https://www.wps.cn/article/UwDvTTFf.html,Copilot和Gemini代表传统工具的AI化路径，无缝集成是卖点,正面,产品模式,Copilot/Gemini,与主流办公工具集成,2026-09-10
+166,人人都是产品经理,https://www.woshipm.com/share/6017712.html,Aippt生成的ppt外观精美但大纲和正文内容的丰富程度逻辑性一般,负面,内容质量,Aippt,提升内容质量与逻辑性,2026-09-11
+167,人人都是产品经理,https://www.woshipm.com/share/6017712.html,Aippt自动配图图文相关性不高，测评春秋时期却配了现代公司场景,负面,配图质量,Aippt,提升配图与内容相关性,2026-09-11
+168,人人都是产品经理,https://www.woshipm.com/share/6017712.html,ChatPPT生成19页ppt几乎每页文字都一样，最后几页开始瞎编,负面,内容质量,ChatPPT,提升内容生成准确性,2026-09-11
+169,人人都是产品经理,https://www.woshipm.com/share/6017712.html,百度文库做ppt功能少但核心都有，逻辑清晰内容充实排版精美,正面,功能完整性,百度文库,保持小而精实用路线,2026-09-11
+170,人人都是产品经理,https://www.woshipm.com/share/6017712.html,腾讯智文使用感受与百度文库相似，功能不多但实用，但不能生成演讲稿,中性,功能完整性,讯飞智文,增加演讲稿生成功能,2026-09-11
+171,人人都是产品经理,https://www.woshipm.com/share/6017712.html,islide内容充实逻辑清晰排版精美但不能在线编辑，下载需要开会员,负面,编辑能力,islide,支持在线编辑,2026-09-11
+172,人人都是产品经理,https://www.woshipm.com/share/6017712.html,Gamma中文效果不佳，指令让介绍井田制似乎听不懂,负面,中文支持,Gamma,加强中文本地化理解,2026-09-11
+173,人人都是产品经理,https://www.woshipm.com/share/6017712.html,Tome输入主题后只生成2页ppt，内容过于少,负面,内容质量,Tome,提升内容生成量,2026-09-11
+174,人人都是产品经理,https://www.woshipm.com/share/6017712.html,slidesgo生成的ppt内容过于简单单薄，配图都是外国人且毫无相关性,负面,内容质量,slidesgo,适配中文内容生成,2026-09-11
+175,人人都是产品经理,https://www.woshipm.com/share/6017712.html,用户关注生成方式：需能根据现有文档生成PPT，已成为标配能力,建议,功能完整性,通用,支持文档导入生成PPT,2026-09-11
+176,人人都是产品经理,https://www.woshipm.com/share/6017712.html,用户关注大纲质量：产品生成大纲逻辑性不如豆包文心一言等通用大模型,负面,大纲生成,通用,支持导入自定义大纲,2026-09-11
+177,人人都是产品经理,https://www.woshipm.com/share/6017712.html,用户关注模板风格：最好让用户自己上传模板满足公司VI规范需求,建议,模板功能,通用,支持用户上传公司模板,2026-09-11
+178,人人都是产品经理,https://www.woshipm.com/share/6017712.html,用户关注二次编辑：基本都需要人工二次编辑，传统拖拽繁琐但AI指令修改能用不多,负面,编辑能力,通用,优化AI指令编辑体验,2026-09-11
+179,人人都是产品经理,https://www.woshipm.com/share/6017712.html,用户关注配套功能：一键生成演讲稿功能真的实用,建议,功能完整性,通用,增加演讲稿生成功能,2026-09-11
+180,虎嗅网,https://m.huxiu.com/article/4817404.html,艾瑞咨询调研显示52.7%用户认为PPT排版设计美化效率低,负面,用户体验,通用,优化排版设计效率,2026-09-11
+181,虎嗅网,https://m.huxiu.com/article/4817404.html,艾瑞咨询调研显示48.5%用户对内容生成难创作构思耗费精力犯难,负面,内容生成,通用,降低内容创作门槛,2026-09-11
+182,虎嗅网,https://m.huxiu.com/article/4817404.html,53%用户认为智能PPT帮他们节省了30%到50%制作时间,正面,效率提升,通用,继续优化生成速度,2026-09-11
+183,B站评论区,https://www.bilibili.com/video/BV1m97J6UEya,实测豆包生成大纲导入Kimi选模板是最快最顺的组合方式,正面,工作流,豆包/Kimi,优化多工具组合工作流,2026-09-11
+184,知乎专栏,https://zhuanlan.zhihu.com/p/2039451397456917070,AI生成PPT翻车实录：十分钟毛坯到两天精修，返工成本极高,负面,生成质量,通用,提高一次生成可用率减少返工,2026-09-11
+185,知乎专栏,https://zhuanlan.zhihu.com/p/2039451397456917070,PPT方案共性痛点：生成后仍需大量手动调整，与预期差距大,负面,生成质量,通用,缩小生成结果与预期差距,2026-09-11
+170,虎嗅网,https://m.huxiu.com/article/4817404.html,百度文库APP月活排国内AI应用榜第8名，是唯一以AI内容创作功能登榜TOP10的,正面,效率提升,百度文库,持续强化AI内容创作能力,2026-09-11

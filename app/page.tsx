@@ -120,6 +120,37 @@ export default function Home() {
                 </p>
               </div>
 
+              {/* 保持原文模式开关 */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => updateOptions({ keepOriginal: !options.keepOriginal })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    options.keepOriginal
+                      ? 'bg-blue-600'
+                      : 'bg-gray-200 dark:bg-gray-700'
+                  }`}
+                  aria-pressed={options.keepOriginal}
+                  aria-label="切换保持原文模式"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      options.keepOriginal ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+                <div>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    保持原文模式
+                  </span>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {options.keepOriginal
+                      ? 'AI仅作排版，不改写原文内容'
+                      : '禁用：AI将根据主题生成内容'}
+                  </p>
+                </div>
+              </div>
+
               {/* 模板与序号样式选择（仅掌控模式显示） */}
               {mode === 'mastery' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -392,6 +423,7 @@ export default function Home() {
                   <li>• <strong>掌控模式</strong>：提供详细的内容和完整的结构</li>
                   <li>• 使用方向键或空格键在幻灯片间导航</li>
                   <li>• 连接后端服务后可导出 PPTX/PDF 格式</li>
+                  <li>• <strong>保持原文模式</strong>：直接将上传内容按段落分页，不做AI改写（参考即触AI）</li>
                 </ul>
               </div>
             </div>

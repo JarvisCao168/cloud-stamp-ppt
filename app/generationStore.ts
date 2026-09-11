@@ -8,6 +8,7 @@ import { saveCheckpoint, clearAllCheckpoints } from './checkpoints';
 export interface GenerationOptions {
   templateId?: string;
   numberingStyleId?: string;
+  keepOriginal?: boolean;
 }
 
 export function useGeneration() {
@@ -70,7 +71,7 @@ export function useGeneration() {
     setCheckpoints(new Map());
 
     try {
-      const result = await generateSlides(prompt, mode);
+      const result = await generateSlides(prompt, mode, { keepOriginal: options.keepOriginal });
 
       // 保存 session_id，用于后续导出和检查点操作
       setSessionId(result.session_id);
@@ -143,6 +144,7 @@ export function useGeneration() {
           { title: '感谢观看', content: '' },
         ],
         progress: 100,
+        keepOriginal: options.keepOriginal,
       });
     } catch (err) {
       if (controller.signal.aborted) return;

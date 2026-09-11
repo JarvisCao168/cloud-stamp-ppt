@@ -15,6 +15,17 @@ from app.core.config import settings
 router = APIRouter()
 
 
+def _safe_query(conn, sql, default=None):
+    """安全执行SQL查询，表不存在时返回默认值"""
+    if default is None:
+        default = []
+    try:
+        rows = conn.execute(sql).fetchall()
+        return rows if rows else default
+    except Exception:
+        return default
+
+
 def _get_db():
     """同步数据库连接（用于同步 CRUD 操作）"""
     db_path = settings.database_url
@@ -450,14 +461,25 @@ class AssetItem(BaseModel):
     description: Optional[str] = None
     colors: Optional[Dict[str, str]] = None
     preview: Optional[str] = None
+    hex: Optional[str] = None
+    default_colors: Optional[str] = None
+    default_fonts: Optional[str] = None
+    template_count: Optional[int] = None
+    avg_slides: Optional[float] = None
 
 
 @router.get("/templates", response_model=List[AssetItem])
 async def get_templates(category: Optional[str] = None):
-    """获取模板列表"""
-    if category:
-        return [AssetItem(**t) for t in TEMPLATES if t["category"] == category]
-    return [AssetItem(**t) for t in TEMPLATES]
+    """获取模板列表（从DB读取）"""
+    conn = _get_db()
+    try:
+        if category:
+            rows = conn.execute("SELECT id, name, category, preview, description FROM templates WHERE category = ?", (category,)).fetchall()
+        else:
+            rows = conn.execute("SELECT id, name, category, preview, description FROM templates").fetchall()
+        return [AssetItem(id=r['id'], name=r['name'], category=r['category'], preview=r['preview'], description=r['description']) for r in rows]
+    finally:
+        conn.close()
 
 
 @router.get("/color-schemes", response_model=List[AssetItem])
@@ -501,15 +523,38 @@ async def get_numbering_styles(
 
 @router.get("/all", response_model=Dict[str, List[AssetItem]])
 async def get_all_assets():
-    """获取所有资产"""
-    return {
-        "templates": [AssetItem(**t) for t in TEMPLATES],
-        "color_schemes": [AssetItem(id=c["id"], name=c["name"], colors=c["colors"]) for c in COLOR_SCHEMES],
-        "layouts": [AssetItem(id=l["id"], name=l["name"], description=l["description"]) for l in LAYOUTS],
-        "fonts": [AssetItem(id=f["id"], name=f["name"], category=f["category"], description=f["usage"]) for f in FONTS],
-        "animations": [AssetItem(id=a["id"], name=a["name"], category=a["category"]) for a in ANIMATIONS],
-        "numbering_styles": NUMBERING_STYLES,
-    }
+    """获取所有资产（内置 + DB 混合）"""
+    conn = _get_db()
+    try:
+        # 从DB读取配色方案（降级：表不存在时使用空列表）
+        color_rows = _safe_query(conn, "SELECT hex_color, category, tags, usage_count FROM color_palettes ORDER BY usage_count DESC")
+        db_color_schemes = [{"id": f"color-{r['hex_color']}", "name": r['hex_color'], "hex": r['hex_color'], "category": r['category']} for r in color_rows]
+
+        # 从DB读取字体
+        font_rows = _safe_query(conn, "SELECT font_name, font_type, tags, usage_count FROM font_library ORDER BY usage_count DESC")
+        db_fonts = [{"id": f"font-{r['font_name']}", "name": r['font_name'], "category": r['font_type']} for r in font_rows]
+
+        # 从DB读取类别
+        cat_rows = _safe_query(conn, "SELECT category_name, description, default_colors, default_fonts, template_count, avg_slides FROM template_categories ORDER BY category_name")
+        db_categories = [{"id": r['category_name'], "name": r['category_name'], "description": r['description'], "default_colors": r['default_colors'], "default_fonts": r['default_fonts'], "template_count": r['template_count'], "avg_slides": r['avg_slides']} for r in cat_rows]
+
+        # 从DB读取模板（主键为TEXT类型）
+        db_rows = _safe_query(conn, "SELECT id, name, category, preview, description FROM templates")
+        db_templates = [AssetItem(id=r['id'], name=r['name'], category=r['category'], preview=r['preview'], description=r['description']) for r in db_rows] if db_rows else [AssetItem(**t) for t in TEMPLATES]
+
+        return {
+            "templates": db_templates,
+            "color_schemes": [AssetItem(id=c["id"], name=c["name"], colors=c["colors"]) for c in COLOR_SCHEMES],
+            "db_color_palettes": db_color_schemes,
+            "layouts": [AssetItem(id=l["id"], name=l["name"], description=l["description"]) for l in LAYOUTS],
+            "fonts": [AssetItem(id=f["id"], name=f["name"], category=f["category"], description=f["usage"]) for f in FONTS],
+            "db_fonts": db_fonts,
+            "categories": db_categories,
+            "animations": [AssetItem(id=a["id"], name=a["name"], category=a["category"]) for a in ANIMATIONS],
+            "numbering_styles": NUMBERING_STYLES,
+        }
+    finally:
+        conn.close()
 
 
 # ========== 序号样式 CRUD（DB 持久化） ==========

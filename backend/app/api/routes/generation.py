@@ -30,6 +30,7 @@ class GenerationRequest(BaseModel):
     user_input: str
     mode: str = "quick"  # quick / collaborative / full_control
     extra_config: Optional[Dict[str, Any]] = None
+    keep_original: bool = False  # 保持原文模式：禁用LLM改写，仅做排版分页
 
 
 class CheckpointAction(BaseModel):
@@ -145,63 +146,108 @@ class GenerationService:
     async def start_generation(self, request: GenerationRequest) -> GenerationResponse:
         """开始生成PPT"""
         session_id = str(uuid.uuid4())
-        
+
         # 检测硬件
         hardware_profile = self.hardware_detector.detect()
         self.model_router = ModelRouter(hardware_profile)
-        
+
         # 根据模式执行不同流水线
         if request.mode == "quick":
-            result = await self._quick_mode_pipeline(session_id, request.user_input, request.extra_config)
+            result = await self._quick_mode_pipeline(session_id, request.user_input, request.extra_config or {}, request.keep_original)
             return GenerationResponse(
                 session_id=session_id,
                 status="completed",
-                message="极速模式生成完成",
+                message="极速模式生成完成" + ("（保持原文模式）" if request.keep_original else ""),
                 data=result
             )
         elif request.mode == "collaborative":
-            result = await self._collaborative_mode_pipeline(session_id, request.user_input, request.extra_config)
+            result = await self._collaborative_mode_pipeline(session_id, request.user_input, request.extra_config or {}, request.keep_original)
             return result
         elif request.mode == "full_control":
-            result = await self._full_control_mode_pipeline(session_id, request.user_input, request.extra_config)
+            result = await self._full_control_mode_pipeline(session_id, request.user_input, request.extra_config or {}, request.keep_original)
             return result
         else:
             raise HTTPException(status_code=400, detail=f"不支持的生成模式: {request.mode}")
     
-    async def _quick_mode_pipeline(self, session_id: str, user_input: str, config: dict) -> dict:
+    async def _quick_mode_pipeline(self, session_id: str, user_input: str, config: dict, keep_original: bool = False) -> dict:
         """极速模式流水线"""
-        # 1. 意图理解
-        intent = await self._intent_analysis(user_input)
+        # 保持原文模式：优先解析用户输入为结构化内容
+        if keep_original:
+            slides = await self._fill_keep_original(user_input)
+        else:
+            # 1. 意图理解
+            intent = await self._intent_analysis(user_input)
+            # 2. 大纲生成
+            outline = await self._generate_outline(intent)
+            # 3. 内容填充
+            slides = await self._fill_content(outline, intent)
+            # 4. 序号样式推荐（新增）
+            numbering_style = await self._recommend_numbering_style(intent, outline)
+            # 5. 样式匹配
+            style = await self._match_style(intent)
 
-        # 2. 大纲生成
-        outline = await self._generate_outline(intent)
+            # 保存会话
+            sessions[session_id] = {
+                "intent": intent,
+                "outline": outline,
+                "slides": slides,
+                "numbering_style": numbering_style,
+                "style": style,
+                "mode": "quick",
+                "keep_original": keep_original,
+            }
+            return {
+                "intent": intent,
+                "outline": outline,
+                "slides": slides,
+                "numbering_style": numbering_style,
+                "style": style,
+                "keep_original": keep_original,
+            }
 
-        # 3. 内容填充
-        slides = await self._fill_content(outline, intent)
-
-        # 4. 序号样式推荐（新增）
-        numbering_style = await self._recommend_numbering_style(intent, outline)
-
-        # 5. 样式匹配
-        style = await self._match_style(intent)
-
-        # 保存会话
+        # 保持原文模式：直接返回原文内容
         sessions[session_id] = {
-            "intent": intent,
-            "outline": outline,
             "slides": slides,
-            "numbering_style": numbering_style,
-            "style": style,
-            "mode": "quick"
+            "mode": "quick",
+            "keep_original": keep_original,
         }
+        return {"slides": slides, "keep_original": keep_original}
 
-        return {
-            "intent": intent,
-            "outline": outline,
-            "slides": slides,
-            "numbering_style": numbering_style,
-            "style": style
-        }
+    async def _fill_keep_original(self, user_input: str) -> list:
+        """保持原文模式：将用户输入按段落/标题解析为幻灯片内容，不做改写"""
+        import re
+        paragraphs = [p.strip() for p in user_input.split('\n') if p.strip()]
+        slides = []
+        i = 0
+        while i < len(paragraphs):
+            para = paragraphs[i]
+            # 检测是否为标题行（短行且不含标点结尾）
+            is_title = len(para) < 40 and not para.endswith('。') and not para.endswith('.')
+            if is_title and i + 1 < len(paragraphs):
+                # 标题+内容合并为一页
+                content = []
+                j = i + 1
+                while j < len(paragraphs) and not (len(paragraphs[j]) < 40 and not paragraphs[j].endswith('。')):
+                    content.append(paragraphs[j])
+                    j += 1
+                slides.append({
+                    "index": len(slides) + 1,
+                    "title": para,
+                    "content": content,
+                    "layout": "title-content",
+                    "speaker_notes": "",
+                })
+                i = j
+            else:
+                slides.append({
+                    "index": len(slides) + 1,
+                    "title": "要点",
+                    "content": [para],
+                    "layout": "title-content",
+                    "speaker_notes": "",
+                })
+                i += 1
+        return slides
     
     async def _intent_analysis(self, user_input: str) -> dict:
         """意图理解"""
@@ -313,62 +359,64 @@ class GenerationService:
             "font_pairing": {"heading": "微软雅黑", "body": "微软雅黑"}
         }
     
-    async def _collaborative_mode_pipeline(self, session_id: str, user_input: str, config: dict) -> GenerationResponse:
+    async def _collaborative_mode_pipeline(self, session_id: str, user_input: str, config: dict, keep_original: bool = False) -> GenerationResponse:
         """协作模式流水线"""
         # 创建会话
         checkpoint_engine.create_session(session_id, "collaborative")
-        
+
         # 意图理解
         intent = await self._intent_analysis(user_input)
-        
+
         # 大纲生成
         outline = await self._generate_outline(intent)
-        
+
         # 暂停在第一个检查点
         checkpoint = await checkpoint_engine.pause_at_checkpoint(session_id)
-        
+
         sessions[session_id] = {
             "intent": intent,
             "outline": outline,
-            "mode": "collaborative"
+            "mode": "collaborative",
+            "keep_original": keep_original,
         }
-        
+
         return GenerationResponse(
             session_id=session_id,
             status="checkpoint",
-            message="请确认大纲",
+            message="请确认大纲" + ("（保持原文模式）" if keep_original else ""),
             checkpoints=[{
                 "id": checkpoint.id,
                 "title": checkpoint.title,
                 "description": checkpoint.description,
-                "data": {"outline": outline}
+                "data": {"outline": outline, "keep_original": keep_original}
             }]
         )
     
-    async def _full_control_mode_pipeline(self, session_id: str, user_input: str, config: dict) -> GenerationResponse:
+    async def _full_control_mode_pipeline(self, session_id: str, user_input: str, config: dict, keep_original: bool = False) -> GenerationResponse:
         """全程掌控模式流水线"""
         checkpoint_engine.create_session(session_id, "full_control")
-        
+
         intent = await self._intent_analysis(user_input)
         outline = await self._generate_outline(intent)
-        
+
         checkpoint = await checkpoint_engine.pause_at_checkpoint(session_id)
-        
+
         sessions[session_id] = {
             "intent": intent,
             "outline": outline,
-            "mode": "full_control"
+            "mode": "full_control",
+            "keep_original": keep_original,
         }
-        
+
         return GenerationResponse(
             session_id=session_id,
             status="checkpoint",
-            message="请确认大纲结构",
+            message="请确认大纲结构" + ("（保持原文模式）" if keep_original else ""),
             checkpoints=[{
                 "id": checkpoint.id,
                 "title": checkpoint.title,
                 "description": checkpoint.description,
-                "data": {"outline": outline}
+                "data": {"outline": outline, "keep_original": keep_original}
             }]
         )
     
