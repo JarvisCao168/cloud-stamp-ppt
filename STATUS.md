@@ -1,8 +1,8 @@
 # 云章PPT智能体系统 - 项目状态报告
 
 **更新日期**: 2026-09-14
-**当前阶段**: Phase 3 P1 全部交付 + 收尾提交完成（`c466fd2` 429 修复 + 双 DB 绝对路径锚定 + proxy 8001）
-**最新 Commit**: `c466fd2`（收尾：429/quota + DB 锚定 + proxy）/ `6911a68`（协作 MVP 前端精修+测试）/ `0146a54`（SSE 后端）/ `523706a`（长文本优化）
+**当前阶段**: Phase 3 P1 全部交付 + 收尾提交完成（`451e25d` 文档口径对齐 + 解除跟踪）
+**最新 Commit**: `451e25d`（收尾：符号名/丢失判定口径对齐 + 文档清理 + 解除跟踪）/ `c466fd2`（429/quota + DB 锚定 + proxy）/ `6911a68`（协作 MVP 前端精修+测试）/ `0146a54`（SSE 后端）/ `523706a`（长文本优化）
 
 ## 团队配置
 
@@ -88,6 +88,7 @@ E2E: 55/56 通过（1 flaky，非代码缺陷）✅
 
 ## Git 历史（近期）
 ```
+451e25d chore(cleanup): 收尾提交 — 移除构建/测试产物跟踪 + 文档口径对齐                 ← Hermes
 c466fd2 fix(quota+db): 429 human-readable error + reset_at day-boundary + DB path anchoring + proxy to 8001  ← Claude
 27f5eba chore(status): STATUS.md 对齐 6911a68 协作 MVP 前端精修完成                       ← Hermes
 6911a68 feat(collab-mvp): 前端精修+3项专属测试（重连退避/回放去重/多订阅者/429）  ← Hermes/Codex
@@ -115,6 +116,7 @@ fc69cea fix(quota): async check_quota + usage_log schema + /create wiring       
 | P4 | `slide_update` / `generation_complete` 生产端实现 | @Claude/@Codex | 协议层已预留，Phase 4 协作编辑流落地 |
 | P4 | 积分制设计文档（免费额度计数器之上） | @Claude | 协作 MVP 完成后启动 |
 | P2 | 生产环境部署方案（Vercel/阿里云） | @Hermes | 待开始 |
+| P3 | `next.config.ts` 429 结构化错误透传（FastAPI 429 body 的 `message`/`used`/`limit`/`reset_at` 转发给前端） | 待 JARVIS 定格式 | 🔴 未确认需要；Hermes `451e25d` 逐行确认当前 proxy 无此逻辑，加之前需先定具体字段格式 |
 
 ## 阻塞项
 
@@ -126,7 +128,7 @@ fc69cea fix(quota): async check_quota + usage_log schema + /create wiring       
 
 ## 下一步计划
 
-1. **协作 MVP 收尾**: ✅ `6911a68` 前端精修 + 3 项专属测试 + `c466fd2` 429/quota 修复 + 双 DB 绝对路径锚定 + proxy→8001 已全部推 GitHub；STATUS.md 已对齐
+1. **协作 MVP 收尾**: ✅ `6911a68` 前端精修 + 3 项专属测试 + `c466fd2` 429/quota 修复 + 双 DB 绝对路径锚定 + proxy→8001 + `451e25d` 文档口径对齐/解除跟踪 已全部推 GitHub；STATUS.md 已对齐
 2. **真实 Agnes key 补跑**（可选）: JARVIS 提供 key → 写入 `backend/.env` → @Codex 补跑真实链路 E2E + 429 连续验证 + 5000 字长文本端到端；补跑前先清理 8000 端口残留
 3. **Phase 4 启动**: @Claude 积分制设计文档（非代码，协作 MVP 完成后开工）
 4. **生产部署**: @Hermes 制定部署方案
