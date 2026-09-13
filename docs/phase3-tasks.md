@@ -30,6 +30,7 @@
 **目标**: 设计免费额度方案，降低用户门槛  
 **预期收益**: 提升获客与留存  
 **定案（Hermes 整合 + Codex 实现细节 + Claude 绑定建议）**: 每日 10 次计数器，表 `usage_log(user_id, generated_at, ip)`，限流走日期键滑动窗口；`FREE_DAILY_LIMIT=10` 配置项；积分制放 Phase 4
+**已交付（commit `60f8051`）**: `db.py` schema + `quota.py` 滑动窗口限流 + `/create` 路由 429 拦截已落地；未登录时 `user_id` 缺省用 `anon-{客户端IP}` 兜底；**429 路径 + 5000+ 字符长文本预研待 E2E 基线验证**（等 Agnes key 落 `backend/.env`）
 
 ---
 

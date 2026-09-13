@@ -51,6 +51,15 @@ CREATE TABLE IF NOT EXISTS template_numbering (
     FOREIGN KEY (numbering_id) REFERENCES numbering_styles(id)
 );
 
+-- 免费额度日志表
+CREATE TABLE IF NOT EXISTS usage_log (
+    user_id TEXT NOT NULL,
+    generated_at TIMESTAMP NOT NULL,
+    ip TEXT,
+    PRIMARY KEY (user_id, generated_at)
+);
+CREATE INDEX IF NOT EXISTS idx_usage_log_user_date ON usage_log(user_id, generated_at);
+
 -- 创建索引
 CREATE INDEX IF NOT EXISTS idx_numbering_styles_type ON numbering_styles(type);
 CREATE INDEX IF NOT EXISTS idx_numbering_styles_tags ON numbering_styles(tags);

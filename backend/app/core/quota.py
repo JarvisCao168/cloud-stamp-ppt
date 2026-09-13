@@ -44,8 +44,8 @@ async def check_quota(user_id: str) -> Tuple[bool, int, int]:
     """
     limit = settings.free_daily_limit
     since = _today_start_utc()
-    conn = aiosqlite.connect(settings.database_url.replace("sqlite+aiosqlite:///", ""))
-    conn.row_factory = aiosqlite.Row
+    db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
+    conn = await aiosqlite.connect(db_path)
     try:
         cursor = await conn.execute(
             "SELECT COUNT(*) AS cnt FROM usage_log WHERE user_id = ? AND generated_at >= ?",
@@ -73,12 +73,12 @@ def record_usage_sync(user_id: str, ip: Optional[str] = None) -> None:
 
 def record_usage(user_id: str, ip: Optional[str] = None) -> None:
     """同步写入一条 usage_log（当前时间戳）"""
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.now(timezone.utc)
     conn = get_db_sync()
     try:
         conn.execute(
-            "INSERT INTO usage_log (user_id, generated_at, ip) VALUES (?, ?, ?)",
-            (user_id, now, ip),
+            "INSERT OR REPLACE INTO usage_log (user_id, generated_at, ip) VALUES (?, ?, ?)",
+            (user_id, now.strftime("%Y-%m-%d %H:%M:%S.%f"), ip),
         )
         conn.commit()
     finally:

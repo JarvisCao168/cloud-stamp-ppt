@@ -450,17 +450,37 @@ generation_service = GenerationService()
 # ========== API端点 ==========
 
 @router.post("/create", response_model=GenerationResponse)
-async def create_generation(request: GenerationRequest):
+async def create_generation(request: GenerationRequest, http_request: Request):
     """创建生成任务"""
     # 先验证模式，再执行生成（避免被外层try/except吞掉）
     if request.mode not in ("quick", "collaborative", "full_control"):
         raise HTTPException(status_code=400, detail=f"不支持的生成模式: {request.mode}")
+    # 免费额度检查：user_id 未登录时用客户端 IP 兜底
+    if request.user_id:
+        quota_user_id = request.user_id
+    elif http_request.client:
+        quota_user_id = f"anon-{http_request.client.host}"
+    else:
+        quota_user_id = "anon-unknown"
+    allowed, used, limit = await check_quota(quota_user_id)
+    if not allowed:
+        from datetime import datetime, timedelta
+        reset_at = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d 00:00:00")
+        raise HTTPException(status_code=429, detail={
+            "error": "daily_free_quota_exceeded",
+            "used": used,
+            "limit": limit,
+            "reset_at": reset_at,
+        })
     try:
-        return await generation_service.start_generation(request)
+        response = await generation_service.start_generation(request)
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"生成失败: {str(e)}")
+    # 生成成功记入每日免费额度
+    record_usage(quota_user_id, ip=http_request.client.host if http_request.client else None)
+    return response
 
 
 @router.post("/checkpoint/{session_id}/{checkpoint_id}/action")
