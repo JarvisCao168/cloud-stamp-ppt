@@ -113,10 +113,10 @@ fc69cea fix(quota): async check_quota + usage_log schema + /create wiring       
 | P1 | 真实 Agnes key E2E 补跑（真实链路 + 429 连续 + 5000 字长文本端到端） | @Codex | ⏳ 待 JARVIS 提供 key 写入 `backend/.env`（已 gitignore）；不阻塞 P1 |
 | P1 | 8000 端口残留进程清理（PID 18268） | @Codex | ✅ PID 18268 已自然消失，仅 8001 监听（双后端双写风险已消除） |
 | P2 | `database_url` 绝对路径改法（堵死 CWD 重建根目录 DB） | @Claude | ✅ `c466fd2` 已交付（`config.py` 绝对路径锚定 + proxy→8001 + 根目录残留 DB 删除） |
-| P4 | `slide_update` / `generation_complete` 生产端实现 | @Claude/@Codex | 协议层已预留，Phase 4 协作编辑流落地 |
+| P4 | `slide_update` / `generation_complete` 生产端实现 + 429 结构化透传字段格式 + `Last-Event-ID` 断点续传/独立鉴权 | @Claude/@Codex | 协议层已预留；MVP 关闭 429 透传决策（Codex 拍板），格式随 Phase 4 配额面板 + 协作编辑流统一定 |
 | P4 | 积分制设计文档（免费额度计数器之上） | @Claude | 协作 MVP 完成后启动 |
 | P2 | 生产环境部署方案（Vercel/阿里云） | @Hermes | 待开始 |
-| P3 | `next.config.ts` 429 结构化错误透传（FastAPI 429 body 的 `message`/`used`/`limit`/`reset_at` 转发给前端） | 待 JARVIS 定格式 | 🔴 未确认需要；Hermes `451e25d` 逐行确认当前 proxy 无此逻辑，加之前需先定具体字段格式 |
+| ~~P3~~ | `next.config.ts` 429 结构化错误透传（FastAPI 429 body 的 `message`/`used`/`limit`/`reset_at` 转发给前端） | @Codex 拍板 | ✅ 关闭 — MVP 不加 proxy 层 429 结构化透传（避免错误解析耦合），字段格式与 `Last-Event-ID` 鉴权一并留到 Phase 4 配额面板 + 协作编辑流统一定 |
 
 ## 阻塞项
 
@@ -130,7 +130,7 @@ fc69cea fix(quota): async check_quota + usage_log schema + /create wiring       
 
 1. **协作 MVP 收尾**: ✅ `6911a68` 前端精修 + 3 项专属测试 + `c466fd2` 429/quota 修复 + 双 DB 绝对路径锚定 + proxy→8001 + `451e25d` 文档口径对齐/解除跟踪 已全部推 GitHub；STATUS.md 已对齐
 2. **真实 Agnes key 补跑**（可选）: JARVIS 提供 key → 写入 `backend/.env` → @Codex 补跑真实链路 E2E + 429 连续验证 + 5000 字长文本端到端；补跑前先清理 8000 端口残留
-3. **Phase 4 启动**: @Claude 积分制设计文档（非代码，协作 MVP 完成后开工）
+3. **Phase 4 启动**: @Claude 积分制设计文档（非代码，协作 MVP 完成后开工）；429 结构化透传字段格式随配额面板 + 协作编辑流统一定（MVP 已拍板不加，Codex 决策）
 4. **生产部署**: @Hermes 制定部署方案
 
 ---
