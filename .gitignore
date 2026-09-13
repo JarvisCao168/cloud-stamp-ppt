@@ -1,29 +1,37 @@
-# Runtime outputs
-outputs/
+# Database backups
+backend/yunzhang.db.bak
+*.db.bak
+*.db-journal
+*.db-wal
 
-# Node modules
+# Dependencies
 node_modules/
 
-# Build artifacts
+# Build outputs
 .next/
 dist/
+build/
+out/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Test artifacts
+coverage/
+test-results/
+playwright-report/
 
 # Environment
 .env
 .env.local
+*.secret
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
 
-# IDE
-.vscode/
-.idea/
-
 # Logs
 *.log
-npm-debug.log*
-
-# Academic paper extraction
-docs/academic_paper_full.txt
-docs/academic_paper_content.txt
