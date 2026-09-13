@@ -3,12 +3,14 @@ AI生成路由
 串联意图理解、大纲生成、内容填充、样式匹配等核心模块
 提供极速/协作/全程掌控三种模式的API接口
 """
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, AsyncGenerator
 import uuid
 import json
 import asyncio
+import time
 
 from ...core.agnes_client import agnes_client
 from ...core.zhipu_client import zhipu_client
@@ -25,6 +27,88 @@ checkpoint_engine = CheckpointEngine()
 
 # 会话存储（生产环境应使用Redis）
 sessions = {}
+
+# ========== 协作 MVP: SSE 实时广播 ==========
+# 事件订阅表：session_id -> 所有在线订阅者的 asyncio.Queue
+_collab_subscribers: Dict[str, List[asyncio.Queue]] = {}
+# 每个会话的最近 100 条事件，新订阅者 join 时回放（避免错过 join 前的进度）
+_collab_event_log: Dict[str, List[Dict[str, Any]]] = {}
+_COLLAB_MAX_LOG = 100
+
+
+def _sse_format(event: str, data: Dict[str, Any]) -> str:
+    """格式化单条 SSE 事件（event: + data: JSON）"""
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+def collab_publish(session_id: str, event: str, payload: Dict[str, Any]) -> None:
+    """发布协作事件：写入会话事件日志并推送给所有在线订阅者（非阻塞）"""
+    entry = {"ts": time.time(), "event": event, "data": payload}
+    log = _collab_event_log.setdefault(session_id, [])
+    log.append(entry)
+    if len(log) > _COLLAB_MAX_LOG:
+        log.pop(0)
+    for q in _collab_subscribers.get(session_id, []):
+        q.put_nowait(entry)
+
+
+def _collab_snapshot(session_id: str) -> Dict[str, Any]:
+    """会话当前状态快照（发给新 join 的订阅者，让其恢复上下文）"""
+    session = sessions.get(session_id) or {}
+    return {
+        "session_id": session_id,
+        "mode": session.get("mode"),
+        "keep_original": session.get("keep_original"),
+        "slides_count": len(session.get("slides") or []),
+    }
+
+
+@router.get("/stream")
+async def collab_stream(
+    session_id: str = Query(..., description="生成会话ID"),
+):
+    """
+    协作 MVP SSE 端点：GET /api/collab/stream?session_id=...
+    （主端点挂 generation 路由；main.py 将同一路由再注册到 /api/collab 前缀下）
+
+    事件协议（锁定版，供前端 components/collab/* 消费）：
+      event: snapshot             连接建立时下发一次会话状态快照
+      event: generation_progress  流水线各阶段进度（data: {stage, detail, ts}）
+      event: collab_status        协作状态变更（data: {status, message}）
+      event: ping                 心跳（30s 间隔保活，data: {ts}）
+    """
+    async def event_stream() -> AsyncGenerator[str, None]:
+        q: asyncio.Queue = asyncio.Queue()
+        _collab_subscribers.setdefault(session_id, []).append(q)
+        try:
+            # 1) 回放该会话历史事件（新 join 者不漏进度）
+            for entry in _collab_event_log.get(session_id, []):
+                yield _sse_format(entry["event"], entry["data"])
+            # 2) 下发快照
+            yield _sse_format("snapshot", _collab_snapshot(session_id))
+            # 3) 持续消费队列，30s 无事件则发 ping 心跳
+            while True:
+                try:
+                    entry = await asyncio.wait_for(q.get(), timeout=30)
+                    yield _sse_format(entry["event"], entry["data"])
+                except asyncio.TimeoutError:
+                    yield _sse_format("ping", {"ts": time.time()})
+        finally:
+            subs = _collab_subscribers.get(session_id, [])
+            if q in subs:
+                subs.remove(q)
+            if not subs:
+                _collab_subscribers.pop(session_id, None)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 class GenerationRequest(BaseModel):
@@ -176,17 +260,23 @@ class GenerationService:
         """极速模式流水线"""
         # 保持原文模式：优先解析用户输入为结构化内容
         if keep_original:
+            collab_publish(session_id, "generation_progress", {"stage": "keep_original", "detail": "保持原文解析分页"})
             slides = await self._fill_keep_original(user_input)
         else:
             # 1. 意图理解
+            collab_publish(session_id, "generation_progress", {"stage": "intent", "detail": "意图理解"})
             intent = await self._intent_analysis(user_input)
             # 2. 大纲生成
+            collab_publish(session_id, "generation_progress", {"stage": "outline", "detail": "大纲生成"})
             outline = await self._generate_outline(intent)
             # 3. 内容填充
+            collab_publish(session_id, "generation_progress", {"stage": "content", "detail": "内容填充"})
             slides = await self._fill_content(outline, intent)
             # 4. 序号样式推荐（新增）
+            collab_publish(session_id, "generation_progress", {"stage": "numbering", "detail": "序号样式推荐"})
             numbering_style = await self._recommend_numbering_style(intent, outline)
             # 5. 样式匹配
+            collab_publish(session_id, "generation_progress", {"stage": "style", "detail": "样式匹配"})
             style = await self._match_style(intent)
 
             # 保存会话
@@ -368,9 +458,11 @@ class GenerationService:
         checkpoint_engine.create_session(session_id, "collaborative")
 
         # 意图理解
+        collab_publish(session_id, "generation_progress", {"stage": "intent", "detail": "协作模式·意图理解"})
         intent = await self._intent_analysis(user_input)
 
         # 大纲生成
+        collab_publish(session_id, "generation_progress", {"stage": "outline", "detail": "协作模式·大纲生成"})
         outline = await self._generate_outline(intent)
 
         # 暂停在第一个检查点
@@ -382,6 +474,7 @@ class GenerationService:
             "mode": "collaborative",
             "keep_original": keep_original,
         }
+        collab_publish(session_id, "collab_status", {"status": "checkpoint", "message": "请确认大纲"})
 
         return GenerationResponse(
             session_id=session_id,
@@ -399,7 +492,9 @@ class GenerationService:
         """全程掌控模式流水线"""
         checkpoint_engine.create_session(session_id, "full_control")
 
+        collab_publish(session_id, "generation_progress", {"stage": "intent", "detail": "全程掌控·意图理解"})
         intent = await self._intent_analysis(user_input)
+        collab_publish(session_id, "generation_progress", {"stage": "outline", "detail": "全程掌控·大纲生成"})
         outline = await self._generate_outline(intent)
 
         checkpoint = await checkpoint_engine.pause_at_checkpoint(session_id)
@@ -410,6 +505,7 @@ class GenerationService:
             "mode": "full_control",
             "keep_original": keep_original,
         }
+        collab_publish(session_id, "collab_status", {"status": "checkpoint", "message": "请确认大纲结构"})
 
         return GenerationResponse(
             session_id=session_id,
@@ -480,6 +576,8 @@ async def create_generation(request: GenerationRequest, http_request: Request):
         raise HTTPException(status_code=500, detail=f"生成失败: {str(e)}")
     # 生成成功记入每日免费额度
     record_usage(quota_user_id, ip=http_request.client.host if http_request.client else None)
+    # 协作 MVP: POST /create 成功后触发 SSE 广播（状态落定）
+    collab_publish(response.session_id, "collab_status", {"status": response.status, "message": response.message})
     return response
 
 

@@ -48,6 +48,8 @@ app.add_middleware(
 
 app.include_router(hardware.router, prefix="/api/hardware", tags=["硬件检测"])
 app.include_router(generation.router, prefix="/api/generation", tags=["AI生成"])
+# 协作 MVP: 同一 SSE 路由（含 collab_publish 广播）再注册到 /api/collab 前缀下
+app.include_router(generation.router, prefix="/api/collab", tags=["协作MVP"])
 app.include_router(checkpoints.router, prefix="/api/checkpoints", tags=["检查点管理"])
 app.include_router(assets.router, prefix="/api/assets", tags=["设计资产"])
 app.include_router(export.router, prefix="/api/export", tags=["导出服务"])
