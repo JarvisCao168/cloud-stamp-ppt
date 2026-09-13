@@ -11,6 +11,20 @@ const MODE_MAP: Record<PresentationMode, string> = {
   mastery: 'full_control',
 };
 
+/**
+ * 客户端指纹：未登录时用 localStorage 持久化的随机 ID 做每日免费额度计数主体
+ * （后端 user_id 字段；缺失时后端兜底为 anon-{IP}，指纹可让同一浏览器跨页面持续计数）
+ */
+function getClientFingerprint(): string {
+  if (typeof localStorage === 'undefined') return 'anon-web';
+  let id = localStorage.getItem('yz-client-id');
+  if (!id) {
+    id = `client-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem('yz-client-id', id);
+  }
+  return id;
+}
+
 export interface GenerationResult {
   session_id: string;
   status: 'completed' | 'checkpoint';
@@ -47,6 +61,7 @@ export async function generateSlides(
     user_input: prompt,
     mode: MODE_MAP[mode],
     keep_original: options?.keepOriginal || false,
+    user_id: getClientFingerprint(),
   };
   const response = await fetch('/api/generation/create', {
     method: 'POST',
@@ -57,7 +72,12 @@ export async function generateSlides(
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new Error(err.detail || `生成失败 (HTTP ${response.status})`);
+    // 429 免费额度耗尽：后端返回结构化 detail，直接透传中文文案
+    if (response.status === 429 && typeof err.detail === 'object' && err.detail !== null) {
+      const d = err.detail as Record<string, unknown>;
+      throw new Error(String(d.message || `今日免费额度已用完（${d.used}/${d.limit}）`));
+    }
+    throw new Error(typeof err.detail === 'string' ? err.detail : `生成失败 (HTTP ${response.status})`);
   }
 
   return response.json();
