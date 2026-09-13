@@ -13,6 +13,7 @@ const STAGE_LABELS: Record<string, string> = {
   numbering: "序号样式推荐",
   style: "样式匹配",
   keep_original: "保持原文解析分页",
+  keep_original_progress: "保持原文分页中",
 };
 
 export function CollabStatusPanel({ sessionId }: { sessionId: string | null }) {
@@ -48,7 +49,9 @@ export function CollabStatusPanel({ sessionId }: { sessionId: string | null }) {
       {progressStages.length > 0 ? (
         <ol className="list-decimal pl-5 text-slate-600">
           {progressStages.map((stage, i) => (
-            <li key={i}>{STAGE_LABELS[stage] ?? stage}</li>
+            <li key={i} data-testid={`progress-stage-${i}`}>
+              {STAGE_LABELS[stage] ?? stage}
+            </li>
           ))}
         </ol>
       ) : (

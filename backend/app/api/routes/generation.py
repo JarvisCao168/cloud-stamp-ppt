@@ -261,7 +261,7 @@ class GenerationService:
         # 保持原文模式：优先解析用户输入为结构化内容
         if keep_original:
             collab_publish(session_id, "generation_progress", {"stage": "keep_original", "detail": "保持原文解析分页"})
-            slides = await self._fill_keep_original(user_input)
+            slides = self._fill_keep_original(user_input, session_id)
         else:
             # 1. 意图理解
             collab_publish(session_id, "generation_progress", {"stage": "intent", "detail": "意图理解"})
@@ -298,7 +298,21 @@ class GenerationService:
                 "keep_original": keep_original,
             }
 
-        # 保持原文模式：直接返回原文内容
+        # 保持原文模式：长文本预研兜底——空输入或分页失败时插入标题页，
+        # 确保任何输入都产出 ≥1 页，前端/导出链路不会收到空 slides
+        if not slides:
+            slides = [{
+                "index": 1,
+                "title": "保持原文模式",
+                "content": ["（暂无内容，请在输入框填写正文后重新生成）"],
+                "layout": "title-content",
+                "speaker_notes": "",
+            }]
+            collab_publish(session_id, "generation_progress", {
+                "stage": "keep_original_progress",
+                "detail": "空输入兜底标题页",
+                "pages": 1,
+            })
         sessions[session_id] = {
             "slides": slides,
             "mode": "quick",
@@ -306,42 +320,138 @@ class GenerationService:
         }
         return {"slides": slides, "keep_original": keep_original}
 
-    async def _fill_keep_original(self, user_input: str) -> list:
-        """保持原文模式：将用户输入按段落/标题解析为幻灯片内容，不做改写"""
-        import re
-        paragraphs = [p.strip() for p in user_input.split('\n') if p.strip()]
+    # ========== 长文本保持原文：分页常量 ==========
+    # 单页最大内容行数（超出则继续分页，避免单页溢出/不可读）
+    _SLIDES_PER_PAGE = 8
+    # 单行最大字符数（长于该值的段落按句子边界拆成多行）
+    _MAX_PARA_CHARS = 300
+    # 标题行识别阈值：长度低于该值且不以句号/句点结尾，视为小标题
+    _TITLE_MAX_LEN = 40
+
+    @staticmethod
+    def _split_para_to_lines(text: str) -> list:
+        """将长段落按句子边界（。！？!?；;）拆为多行；无边界时才硬切。
+
+        拆分不改变任何文字（原句完整保留），只决定分页呈现粒度。
+        短段落原样返回单行。
+        """
+        s = text.strip()
+        if len(s) <= GenerationService._MAX_PARA_CHARS:
+            return [s]
+        lines, buf = [], ""
+        for ch in s:
+            buf += ch
+            if ch in "。！？!?；;":
+                lines.append(buf)
+                buf = ""
+        if buf:
+            lines.append(buf)
+        # 无句子边界的超长片段按长度硬切，保证单行不溢出
+        out = []
+        for ln in lines:
+            while len(ln) > GenerationService._MAX_PARA_CHARS:
+                out.append(ln[:GenerationService._MAX_PARA_CHARS])
+                ln = ln[GenerationService._MAX_PARA_CHARS:]
+            out.append(ln)
+        return [x for x in out if x]
+
+    @staticmethod
+    def _is_title_line(line: str) -> bool:
+        """标题行识别：短行且不以句号/句点结尾"""
+        l = line.strip()
+        return (
+            len(l) < GenerationService._TITLE_MAX_LEN
+            and not l.endswith('。')
+            and not l.endswith('.')
+        )
+
+    @classmethod
+    def _paginate_keep_original(cls, paragraphs: list) -> list:
+        """保持原文分页：
+
+        1. 长段落先按 _split_para_to_lines 拆行
+        2. 标题行 + 紧随其后的内容行归入同一页；内容超单页行数时继续分页
+        3. 无标题行的纯内容流按每页行数切分，多页时该页首行提升为页标题
+        4. 单页无标题时兜底为"要点"；空输入返回 []（调用方插入标题页兜底）
+
+        任何非空输入都会产出带标题的页面，杜绝无标题页。
+        """
+        if not paragraphs:
+            return []
+        items = [ln for p in paragraphs for ln in cls._split_para_to_lines(p)]
+        n, per_page = len(items), cls._SLIDES_PER_PAGE
         slides = []
         i = 0
-        while i < len(paragraphs):
-            para = paragraphs[i]
-            # 检测是否为标题行（短行且不含标点结尾）
-            is_title = len(para) < 40 and not para.endswith('。') and not para.endswith('.')
-            if is_title and i + 1 < len(paragraphs):
-                # 标题+内容合并为一页
-                content = []
-                j = i + 1
-                while j < len(paragraphs) and not (len(paragraphs[j]) < 40 and not paragraphs[j].endswith('。')):
-                    content.append(paragraphs[j])
+        while i < n:
+            if cls._is_title_line(items[i]):
+                # 标题 + 其内容行合并为一组
+                group, j = [items[i]], i + 1
+                while j < n and not cls._is_title_line(items[j]):
+                    group.append(items[j])
                     j += 1
-                slides.append({
-                    "index": len(slides) + 1,
-                    "title": para,
-                    "content": content,
-                    "layout": "title-content",
-                    "speaker_notes": "",
-                })
+                title, body = group[0], group[1:]
+                # 内容超单页行数时继续分页
+                while body:
+                    page_body, body = body[:per_page], body[per_page:]
+                    slides.append({
+                        "index": len(slides) + 1,
+                        "title": title,
+                        "content": page_body,
+                        "layout": "title-content",
+                        "speaker_notes": "",
+                    })
                 i = j
             else:
-                slides.append({
-                    "index": len(slides) + 1,
-                    "title": "要点",
-                    "content": [para],
-                    "layout": "title-content",
-                    "speaker_notes": "",
-                })
-                i += 1
+                # 多页时首行提升为页标题；单页时兜底为"要点"，避免无标题页
+                # 首行提升后该页内容行数为 per_page - 1（首行已用于标题）
+                will_be_multi_page = (n - i) > per_page
+                if will_be_multi_page or len(items[i:i + per_page]) > 1:
+                    body_chunk = items[i + 1:i + per_page]
+                    slides.append({
+                        "index": len(slides) + 1,
+                        "title": items[i],
+                        "content": body_chunk,
+                        "layout": "title-content",
+                        "speaker_notes": "",
+                    })
+                    i += per_page
+                else:
+                    # 仅 1 行且是标题行（长段落残段）：兜底为"要点"
+                    slides.append({
+                        "index": len(slides) + 1,
+                        "title": "要点",
+                        "content": [items[i]],
+                        "layout": "title-content",
+                        "speaker_notes": "",
+                    })
+                    i += 1
         return slides
-    
+
+    def _fill_keep_original(self, user_input: str, session_id: str = None) -> list:
+        """保持原文模式：将用户输入按段落/标题解析为幻灯片内容，不做改写。
+
+        长文本优化（Phase 3 P1）：
+        - 空输入直接返回 []（调用方统一插入"标题页"兜底）
+        - 超过单页行数上限时继续分页（_paginate_keep_original）
+        - 每生成一页即通过 SSE 广播 `generation_progress` 事件
+          （stage="keep_original_progress"，含 pages 计数），供
+          components/collab/* 前端实时展示"第 x/y 页"进度
+        """
+        paragraphs = [p.strip() for p in user_input.split('\n') if p.strip()]
+        slides = self._paginate_keep_original(paragraphs)
+        if not slides:
+            # 空输入兜底：不产生无标题页，由调用方插入标题页
+            return []
+        total = len(slides)
+        for idx, slide in enumerate(slides, 1):
+            if session_id is not None:
+                collab_publish(session_id, "generation_progress", {
+                    "stage": "keep_original_progress",
+                    "detail": f"保持原文分页 {idx}/{total}",
+                    "pages": idx,
+                })
+        return slides
+
     async def _intent_analysis(self, user_input: str) -> dict:
         """意图理解"""
         prompt = INTENT_PROMPT.format(user_input=user_input)

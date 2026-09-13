@@ -51,6 +51,14 @@
 **预期收益**: 满足学术研究场景  
 **并行约束**: 只动 `_fill_keep_original()` 相关后端切分逻辑 + keep-original 开关周边组件
 
+**交付（commit `e1952ac`，2026-09-14）**:
+- `_paginate_keep_original()` 分页引擎：标题行+内容行归组，内容超单页（8行）时继续分页；长段落按句子边界（。！？!?；;）拆行，无边界时按 300 字硬切，零字符丢失
+- 多页无标题时首行提升为页标题；单行兜底"要点"，杜绝无标题页
+- 空输入返回 `[]`，`_quick_mode_pipeline` 统一插入兜底标题页
+- SSE 事件：`stage="keep_original_progress"`，每页广播一条（`detail="保持原文分页 x/y"`, `pages=x`），已纳入锁版协议
+- 前端 `CollabStatusPanel` 补充 `keep_original_progress` 阶段标签
+- 后端单测：`test_keep_original.py` 16 项全绿（句子拆分/无丢失/多页标题提升/空输入契约/进度广播）
+
 ### 6. 移动端适配（@Claude）
 **现状**: 仅即触AI/WPS AI 有移动端  
 **目标**: H5 响应式或小程序  
