@@ -35,3 +35,9 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Generation outputs & research source material
+backend/outputs/
+outputs/
+docs/academic_paper_content.txt
+docs/academic_paper_full.txt
