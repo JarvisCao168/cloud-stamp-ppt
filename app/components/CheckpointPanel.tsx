@@ -28,9 +28,9 @@ export default function CheckpointPanel({ checkpoints, onUpdateCheckpoint, onCon
         {checkpointList.map((cp, index) => (
           <div
             key={cp.id}
-            className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-start sm:items-center gap-3 min-w-0">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                 cp.status === 'completed'
                   ? 'bg-green-100 dark:bg-green-900/30 text-green-600'
@@ -48,11 +48,11 @@ export default function CheckpointPanel({ checkpoints, onUpdateCheckpoint, onCon
                   <span className="text-sm font-medium">{index + 1}</span>
                 )}
               </div>
-              <div>
-                <p className="font-medium text-gray-900 dark:text-white">
+              <div className="min-w-0">
+                <p className="font-medium text-gray-900 dark:text-white break-words">
                   {cp.name.replace(/_/g, ' ')}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-gray-500 dark:text-gray-400 break-words">
                   {cp.description}
                 </p>
               </div>

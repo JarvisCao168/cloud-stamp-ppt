@@ -73,7 +73,7 @@ export default function RevealContainer({ slides, activeSlide, onSlideChange }: 
   }
 
   return (
-    <div className="reveal-container-wrapper w-full h-full min-h-[500px] bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+    <div className="reveal-container-wrapper w-full h-full min-h-[300px] sm:min-h-[500px] bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
       <div ref={containerRef} className="reveal w-full h-full">
         <div className="slides">
           {slides.map((slide: SlideData, index: number) => (

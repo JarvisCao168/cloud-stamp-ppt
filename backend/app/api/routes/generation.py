@@ -3,7 +3,7 @@ AI生成路由
 串联意图理解、大纲生成、内容填充、样式匹配等核心模块
 提供极速/协作/全程掌控三种模式的API接口
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import uuid
@@ -15,6 +15,8 @@ from ...core.zhipu_client import zhipu_client
 from ...core.model_router import ModelRouter, TaskComplexity, GenerationMode
 from ...core.hardware_detector import HardwareDetector
 from ...core.checkpoint_engine import CheckpointEngine
+from ...core.quota import check_quota, record_usage
+from ...core.config import settings
 
 router = APIRouter()
 
@@ -31,6 +33,7 @@ class GenerationRequest(BaseModel):
     mode: str = "quick"  # quick / collaborative / full_control
     extra_config: Optional[Dict[str, Any]] = None
     keep_original: bool = False  # 保持原文模式：禁用LLM改写，仅做排版分页
+    user_id: Optional[str] = None  # 用于每日免费额度计数（可选，未登录时用客户端指纹）
 
 
 class CheckpointAction(BaseModel):

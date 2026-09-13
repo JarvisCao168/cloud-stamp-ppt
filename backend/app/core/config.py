@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     # AI超时设置
     ai_timeout: int = 120
     ai_retry_count: int = 3
+
+    # 免费额度配置（每日生成次数上限，可通过环境变量 FREE_DAILY_LIMIT 覆盖）
+    free_daily_limit: int = 10
     
     class Config:
         env_file = ".env"
