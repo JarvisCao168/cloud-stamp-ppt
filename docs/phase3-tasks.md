@@ -31,6 +31,7 @@
 **预期收益**: 提升获客与留存  
 **定案（Hermes 整合 + Codex 实现细节 + Claude 绑定建议）**: 每日 10 次计数器，表 `usage_log(user_id, generated_at, ip)`，限流走日期键滑动窗口；`FREE_DAILY_LIMIT=10` 配置项；积分制放 Phase 4
 **已交付（commit `60f8051`）**: `db.py` schema + `quota.py` 滑动窗口限流 + `/create` 路由 429 拦截已落地；未登录时 `user_id` 缺省用 `anon-{客户端IP}` 兜底；`c466fd2` 429 响应补 `message` 中文字段 + `reset_at` 改为次日 0 点语义。**429 结构化透传：MVP 不加 proxy 层解析（Codex 拍板 2026-09-14），字段格式随 Phase 4 配额面板 + `Last-Event-ID` 鉴权统一定。**剩余：429 连续验证 + 5000 字长文本端到端待 Agnes key 落 `backend/.env` 后补跑（可选，不阻塞 P1）
+**429 路径验证归属勘误（`72cf9cc`，2026-09-14）**: 429 路径验证由 E2E 基线承担（11 连发 = 10×200 + 1×429），`test_keep_original.py` 16 项不含 429 断言；验证报告与勘误记录见 `docs/collab-mvp-report.md`，`STATUS.md` 测试状态行同步修正
 
 ---
 

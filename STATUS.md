@@ -2,7 +2,7 @@
 
 **更新日期**: 2026-09-14
 **当前阶段**: Phase 3 P1 全部交付 + 收尾提交完成（`451e25d` 文档口径对齐 + 解除跟踪）
-**最新 Commit**: `451e25d`（收尾：符号名/丢失判定口径对齐 + 文档清理 + 解除跟踪）/ `c466fd2`（429/quota + DB 锚定 + proxy）/ `6911a68`（协作 MVP 前端精修+测试）/ `0146a54`（SSE 后端）/ `523706a`（长文本优化）
+**最新 Commit**: `72cf9cc`（补建 `docs/collab-mvp-report.md`：429 路径验证 + 幂等断言两节，含勘误记录）/ `722ebb1`（429 关闭决策同步）/ `4953829`（STATUS 对齐）/ `451e25d`（收尾：符号名/丢失判定口径对齐 + 文档清理 + 解除跟踪）/ `c466fd2`（429/quota + DB 锚定 + proxy）/ `6911a68`（协作 MVP 前端精修+测试）/ `0146a54`（SSE 后端）/ `523706a`（长文本优化）
 
 ## 团队配置
 
@@ -82,12 +82,16 @@
 ```
 后端: 57/57 通过 ✅（4 个 async 测试有既有 pytest-asyncio 配置问题，非阻塞）
 前端 Vitest: 173/173 通过 ✅（含 7 项协作专属测试）
-E2E: 55/56 通过（1 flaky，非代码缺陷）✅
+test_keep_original: 16/16 通过 ✅（分页/保持原文/SSE/fallback 用例，不含 429 断言）
+E2E: 55/56 通过（1 flaky，非代码缺陷）✅（429 路径 11 连发 = 10×200 + 1×429 由 E2E 基线承担，见 docs/collab-mvp-report.md）
 覆盖率: 93.57%（目标 ≥60%）✅
 ```
 
 ## Git 历史（近期）
 ```
+72cf9cc docs: 补建 collab-mvp-report（429 路径验证 + 幂等断言两节，基线 722ebb1，含对 Hermes 参考稿的勘误记录）  ← Codex
+722ebb1 docs(status): 429 结构化透传关闭决策同步 — STATUS.md + phase3-tasks.md 标注 MVP 不加，格式留 Phase 4 配额面板  ← Hermes
+4953829 docs(status): STATUS.md 对齐 451e25d 收尾提交 — 登记 P3 429 透传待决 + 补 commit 表                  ← Hermes
 451e25d chore(cleanup): 收尾提交 — 移除构建/测试产物跟踪 + 文档口径对齐                 ← Hermes
 c466fd2 fix(quota+db): 429 human-readable error + reset_at day-boundary + DB path anchoring + proxy to 8001  ← Claude
 27f5eba chore(status): STATUS.md 对齐 6911a68 协作 MVP 前端精修完成                       ← Hermes
