@@ -1,154 +1,132 @@
 # 云章PPT智能体系统 - 项目状态报告
 
-**更新日期**: 2026-09-11 17:00
-**当前阶段**: Phase 2 完成 + Phase 3 模板库导入+保持原文模式已实现
-**最新 Commit**: `6078392` — feat: PPTX 序号样式注入功能（Phase 3 进行中）
+**更新日期**: 2026-09-13
+**当前阶段**: Phase 3 P1 全部交付；协作 MVP 后端已落地，前端精修 + 专属测试进行中
+**最新 Commit**: `0146a54`（协作 MVP SSE 后端）/ `523706a`（长文本优化分页引擎）
 
 ## 团队配置
 
 | 成员 | 角色 | 状态 | 职责 |
 |------|------|------|------|
-| Hermes | 组长 | ✅ 在线 | 任务分解、进度控制、验收交付 |
-| Claude | 首席架构师 | ✅ 在线 | 核心逻辑攻坚、代码审查、性能优化、后端实现 |
-| Codex | 工程总监 | ✅ 在线 | 自动化测试、CI/CD、E2E 验证 |
+| Hermes | 组长 | ✅ 在线 | 任务分解、进度控制、验收交付、协作 MVP 后端、E2E 基线 |
+| Claude | 首席架构师 | ✅ 在线 | 核心逻辑攻坚、模板库、移动端、长文本优化、Phase 4 积分制 |
+| Codex | 工程总监 | ✅ 在线 | 协作 MVP 前端精修 + 3 项专属测试、E2E 真实 key 补跑 |
 | OpenCode | 全栈开发 | ❌ 离线 | 原负责导出功能，已由 Claude/Hermes 接手 |
 
 ## 项目架构
 
 ```
 云章PPT智能体系统
-├── 前端: Next.js 15 + React 19 + TypeScript + TailwindCSS (localhost:3000)
-├── 后端: FastAPI + Python 3.12 (localhost:8000 via uvicorn)
-│   ├── /api/generation/create  — 创建生成会话
+├── 前端: Next.js 15 + React 19 + TypeScript + TailwindCSS (localhost:43210)
+├── 后端: FastAPI + Python 3.12 (localhost:8001 via uvicorn)
+│   ├── /api/generation/create  — 创建生成会话（含 quota 检查）
 │   ├── /api/generation/session/{id} — 查询会话状态
 │   ├── /api/generation/checkpoint/{sid}/{cid}/action — 检查点操作
 │   ├── /api/checkpoints/flow/{sid} — 检查点流程
+│   ├── /api/collab/stream?session_id=... — 协作 SSE 实时流（MVP）
 │   ├── /api/export/{html|pptx|pdf|png} — 多格式导出
 │   ├── /api/assets/all — 模板/配色/布局资产
 │   └── /api/hardware/detect — 硬件检测
 └── 部署: GitHub Actions CI/CD → JarvisCao168/cloud-stamp-ppt
 ```
 
-## 已完成工作
+## Phase 3 P1 交付记录（本阶段新增）
 
-### 前端开发 ✅
-- [x] Next.js 15 项目初始化
-- [x] TypeScript 类型系统定义
-- [x] API 层封装 (api.ts)
-- [x] 状态管理 (generationStore.ts)
-- [x] UI 组件开发 (ModeSelector, CheckpointPanel, RevealContainer, etc.)
-- [x] 导出功能实现 (HTML/PPTX/PDF/PNG)
-- [x] 三种模式支持 (极速/协作/掌控)
-- [x] API 代理配置 (next.config.ts)
-- [x] SSR 安全守卫 (export.ts)
-- [x] O(n²) 性能优化 (CheckpointPanel.tsx)
+### 协作 MVP SSE 双轨（后端，Hermes `0146a54`）
+- `GET /api/collab/stream?session_id=...` SSE 端点（主端点挂 generation 路由，main.py 同步注册 `/api/collab` 前缀）
+- `collab_publish()` 广播总线：每会话最近 100 条事件 + `asyncio.Queue` 扇出 + 30s `ping` 心跳 + 新 join 者回放历史
+- `/create` 三条流水线（quick/collaborative/full_control）在 quota 检查后追加广播，`fc69cea` quota 一行未动
+- 前端骨架：`app/components/collab/useCollabStream.ts` + `CollabStatusPanel.tsx`（文件级隔离，不碰移动端/长文本文件）
+- 实测：keep_original 链路事件序列完整、二次 join 回放幂等、429 路径未破坏
 
-### 后端开发 ✅
-- [x] FastAPI 服务框架搭建
-- [x] 生成接口 (quick/full_control/collaborative 三种模式)
-- [x] 检查点系统 (8 个检查点 for 掌控模式, 3 个 for 协作模式)
-- [x] 多格式导出 (HTML/PPTX/PDF/PNG)
-- [x] 资产 API (模板/配色/布局)
-- [x] 硬件检测 API
-- [x] 内存会话存储
-- [x] CORS 跨域支持
+**SSE 事件协议（锁定版，前后端已对齐）**
 
-### 测试框架 ✅
-- [x] Vitest 单元测试框架配置
-- [x] Playwright E2E 测试框架配置
-- [x] 140 个单元测试编写
-- [x] 15 个 E2E 测试编写
-- [x] 测试覆盖率 **93.57%** (目标 ≥60%)
-- [x] 覆盖率门控强制执行
+| 事件 | 触发时机 | data 字段 |
+|---|---|---|
+| `snapshot` | 连接建立时下发一次 | `{session_id, mode?, keep_original?, slides_count?}` |
+| `generation_progress` | 流水线各阶段进度 | `{stage, detail, pages?, percent?, currentSlide?, message?}` — stage 枚举 6 值：`intent`/`outline`/`content`/`numbering`/`style`/`keep_original`；长文本分段另用 `stage="keep_original_progress"`（含 `pages`）作为第 7 个扩展值 |
+| `collab_status` | 协作状态变更（检查点确认等） | `{status, message?}` |
+| `ping` | 30s 无事件心跳保活 | `{ts}` |
 
-### CI/CD ✅
-- [x] GitHub Actions 流水线配置
-- [x] Istanbul 覆盖率提供商 (修复 Windows v8 bug)
-- [x] E2E 测试独立 Job
-- [x] CI 连续通过 (#5-#16)
+> `slide_update` / `generation_complete` 两个扩展事件已在 type 定义中预留，MVP 无生产端，留到 Phase 4 协作编辑流落地；MVP 阶段 `Last-Event-ID` 断点续传和独立鉴权不做，依赖现有 `session_id` 透传。
+> `usage_log` 计数规则：整篇算一次，不按段落拆分；长文本分段不走 `/create` 入口，避免 quota 虚增。
 
-### 文档 ✅
-- [x] README.md (Claude 更新)
-- [x] DEVELOPMENT.md
-- [x] TEAM-CHARTER.md
-- [x] BLOCKERS.md
-- [x] STATUS.md
-- [x] TODOLIST.md
-- [x] ppt-market-research-plan.md（平台采集方案，替代问卷）
-- [x] docs/user-feedback-raw.csv（40条结构化数据：HN 20条 + 国内20条）
-- [x] docs/user-feedback-summary.md（第一轮汇总报告，HN）
-- [x] docs/user-feedback-insights.md（第一轮洞察报告）
-- [x] docs/user-feedback-summary-round2.md（第二轮汇总报告，国内平台）
-- [x] docs/competitive-analysis-test-plan.md（竞品测试大纲 v1.0）
-- [x] docs/competitive-analysis.json（结构化数据骨架）
+### 长文本理解优化（Claude `523706a`）
+- `_paginate_keep_original()`：标题行+内容行归组，单页超 8 行自动继续分页
+- 长段落按句子边界（`。！？!?；;`）拆行，无边界 300 字硬切，零字符丢失
+- 多页无标题时首行提升为页标题；单行兜底"要点"——杜绝空标题页
+- 空输入返回 `[]`，`_quick_mode_pipeline` 统一插入兜底标题页
+- SSE 进度：每分页一条 `generation_progress`，`stage="keep_original_progress"` + `pages` 计数
+- `test_keep_original.py` 16 项全绿；回归基线维持 55/56
 
-## 当前状态
+### 免费额度计数器（Claude `60f8051` + Hermes `fc69cea`）
+- `usage_log` 表 + `quota.py`：每日 10 次生成计数（`FREE_DAILY_LIMIT=10`）
+- `fc69cea`：`check_quota()` 补 `await` + `async with aiosqlite.connect(...)` 上下文管理；`db.py` 建表+索引；`/create` 路由接通（`user_id` 缺省 `anon-{IP}`，超限 429 含 `used/limit/reset_at`）
+- E2E 429 路径验证：11 次调用 = 10×200 + 1×429 ✅
 
-### 测试状态
+### E2E 回归基线（Hermes `766ac14`）
+- 55/56 通过（1 flaky：`export.test.ts:386` HTML 导出 15s 超时，非代码缺陷）
+- 动态 `user_id` 注入 + `E2E_API_BASE` 环境变量支持
+- 报告：`docs/e2e-baseline-report.md`
+- 降级链术语修正：实际为 **Agnes→GLM→内置静态默认值**（`/create` 未接 Ollama）
+
+### 移动端适配（Claude `60f8051`）
+- `CheckpointPanel.tsx`：mobile `flex-col` + `min-w-0` + `break-words`
+- `RevealContainer.tsx`：`min-h-[300px] sm:min-h-[500px]`
+
+### 双 DB 统一（Claude `0a1c75d`）
+- 根目录 `yunzhang.db` 删除，统一到 `backend/yunzhang.db`（含 `template_elements` 表）
+- 待办保留：`database_url` 绝对路径改法，彻底堵死 uvicorn CWD 重建根目录 DB 的风险
+
+## 测试状态（最新）
 ```
-后端测试: 17/17 通过 ✅
-前端Vitest: 166/166 通过 ✅
-E2E测试: 7/7（需后端服务运行，fetch failed为预期）
+后端: 57/57 通过 ✅（4 个 async 测试有既有 pytest-asyncio 配置问题，非阻塞）
+前端 Vitest: 166/166 通过 ✅
+E2E: 55/56 通过（1 flaky，非代码缺陷）✅
 覆盖率: 93.57%（目标 ≥60%）✅
-ESLint: 0 错误
-TypeScript: 0 错误
-Build: 成功
 ```
 
-### Phase 3 完成项
-- [x] **模板库数据库导入**：30配色/30字体/25类别/62模板（含15学术扩展）
-- [x] **保持原文模式**：前端开关 + 后端解析逻辑（参考即触AI）
-- [x] **DB资产API增强**：get_all_assets 返回 DB 配色/字体/类别数据
-- [x] **API兼容性**：向后兼容，表不存在时降级为内置数据
-
-### Git 历史
+## Git 历史（近期）
 ```
-8a3145d feat(backend): add FastAPI backend service
-7196e31 docs: update STATUS.md with latest CI status
-be99ebf fix(ci): use istanbul coverage provider instead of v8
-d76c1f9 fix(perf): address code review findings - eliminate O(n²), deduplicate EXPORT_FORMATS, add SSR guard
-5ca13f3 docs: update STATUS.md with E2E test improvements
-987b62a fix(e2e): add timeouts to all unbounded fetch calls
-e1a3692 fix(e2e): strengthen invalid session assertion + add Assets API tests
+523706a feat(keep-original): long-text pagination + SSE progress + empty input fallback  ← Claude
+0146a54 feat(collab-mvp): SSE real-time broadcast + collaboration frontend hooks          ← Hermes
+0a1c75d chore(db): unify dual yunzhang.db into backend/ single source + clean test quota records ← Claude
+766ac14 test(e2e): baseline report 55/56 + dynamic user_id injection                     ← Hermes
+fc69cea fix(quota): async check_quota + usage_log schema + /create wiring                 ← Hermes
+60f8051 feat: mobile responsiveness + free daily quota counter                            ← Claude
 ```
 
-### GitHub 仓库
+## GitHub 仓库
 - **地址**: https://github.com/JarvisCao168/cloud-stamp-ppt
 - **分支**: master → origin/master
-- **状态**: 工作区干净，已推送
 
 ## 待办事项
 
 | 优先级 | 任务 | 负责人 | 状态 |
 |--------|------|--------|------|
-| **P0** | 保持原文模式端到端测试 | @Claude | ✅ 已实现 |
-| **P0** | 模板库前端展示对接 | @Claude | ✅ DB已导入 |
-| P1 | 学术模板库扩充 (+15) | @Codex | ⏳ 待验证 |
-| P1 | 免费额度策略设计 | @Hermes | 待开始 |
-| P1 | 后端压力测试 | @Codex | 待执行 |
-| P1 | 生产环境部署方案 | @Hermes | 待开始 |
-| P0 | 用户反馈采集（平台采集替代问卷） | Claude/Hermes | ✅ 55条已完成 |
-| P1 | 竞品体验对比报告（5款） | Codex | ✅ 测试框架就绪 |
-| P2 | Error Boundary 添加 | — | 建议项 |
-| P2 | 生产环境 API 代理配置 | — | 建议项 |
+| P1 | 协作 MVP 前端精修（视觉规范补全） | @Codex | 🟡 进行中，基于 `0146a54` 基底 |
+| P1 | 协作 MVP 3 项专属测试（进度回放 / 429 不受影响 / 多订阅者并发） | @Codex | 🟡 进行中，`npx playwright test e2e/ --list` 语法验证前置 |
+| P1 | 真实 Agnes key E2E 补跑（真实链路 + 429 连续 + 5000 字长文本端到端） | @Codex | ⏳ 待 JARVIS 提供 key 写入 `backend/.env`（已 gitignore）；不阻塞 P1 |
+| P1 | 8000 端口残留进程清理（PID 18268） | @Codex | ⏳ 补跑真实 key 前需清理，否则双写 `usage_log` 致 429 计数失真 |
+| P2 | `database_url` 绝对路径改法（堵死 CWD 重建根目录 DB） | @Claude | ⏳ 待办保留 |
+| P4 | `slide_update` / `generation_complete` 生产端实现 | @Claude/@Codex | 协议层已预留，Phase 4 协作编辑流落地 |
+| P4 | 积分制设计文档（免费额度计数器之上） | @Claude | 协作 MVP 完成后启动 |
+| P2 | 生产环境部署方案（Vercel/阿里云） | @Hermes | 待开始 |
 
 ## 阻塞项
 
 | ID | 描述 | 优先级 | 负责人 | 状态 |
 |----|------|--------|--------|------|
-| B1 | AI API Key 配置 | P0 | 待配置 | 降级为模板数据 |
-| B2 | 后端服务联调验证 | P1 | @Codex | ✅ 已解决 |
+| B1 | AI API Key 配置 | P1 | 待 JARVIS | 降级链已验证（Agnes→GLM→内置），真实 key 补跑可选 |
+| B3 | 8000 端口残留 PID 18268 杀不掉 | P1 | @Codex | 清理前避免 8000/8001 双后端并行 |
+| B4 | Gamma.app 网络不通（Windows） | P2 | — | 竞品对比报告暂缺 Gamma 数据 |
 
 ## 下一步计划
 
-1. **E2E 验证**: @Codex 启动后端服务，运行 `npx playwright test e2e/`（当前失败因后端未启动）
-2. **Phase 3 继续**: 学术模板扩充验证 + 保持原文模式端到端测试
-3. **部署方案**: @Hermes 制定生产环境部署方案（Vercel/阿里云）
-4. **用户反馈采集**: 继续扩大国内平台采集至170+条
-5. **竞品对比**: @Codex 按P0优先级测试 Gamma → 即触AI → WPS AI → Kimi PPT
-6. **免费额度策略**: @Hermes 设计参考Kimi的免费+积分制
-
----
+1. **协作 MVP 收尾**: @Codex 前端精修 + 3 项专属测试跑通 → Hermes 推 STATUS.md 最终对齐版（含协作 MVP 报告，与 `docs/e2e-baseline-report.md` 并列供 JARVIS 验收）
+2. **真实 Agnes key 补跑**（可选）: JARVIS 提供 key → 写入 `backend/.env` → @Codex 补跑真实链路 E2E + 429 连续验证 + 5000 字长文本端到端；补跑前先清理 8000 端口残留
+3. **Phase 4 启动**: @Claude 积分制设计文档（非代码，协作 MVP 完成后开工）
+4. **生产部署**: @Hermes 制定部署方案
 
 ---
 

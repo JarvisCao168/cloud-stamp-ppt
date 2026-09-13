@@ -1,7 +1,5 @@
-"""
-协作 MVP: 协作状态面板组件（放在 components/collab/*，文件级隔离）
-展示 SSE 实时进度阶段、当前协作状态、连接指示
-"""
+// 协作 MVP: 协作状态面板组件（放在 components/collab/*，文件级隔离）
+// 展示 SSE 实时进度阶段、当前协作状态、连接指示
 "use client";
 
 import { useCollabStream } from "./useCollabStream";
