@@ -13,7 +13,7 @@ import * as path from 'path';
  * 依赖：后端服务运行在 localhost:8000
  */
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = process.env.E2E_API_BASE || 'http://localhost:8000';
 const isCI = process.env.CI === 'true';
 test.skip(isCI, 'Skipping PPTX content tests in CI - backend not available');
 
@@ -31,12 +31,13 @@ async function createSession(userInput: string, mode: string = 'quick'): Promise
   const response = await fetch(`${API_BASE}/api/generation/create`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_input: userInput, mode }),
+    body: JSON.stringify({ user_input: userInput, mode, user_id: `e2e-test-${Date.now()}-${Math.random().toString(16).slice(2)}` }),
     signal: AbortSignal.timeout(15_000),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    throw new Error(`创建会话失败: ${err.detail || response.statusText}`);
+    const detail = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail ?? err);
+    throw new Error(`创建会话失败: ${detail || response.statusText}`);
   }
   const data = await response.json();
   return data.session_id;

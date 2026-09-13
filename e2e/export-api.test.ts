@@ -10,7 +10,7 @@ import { test, expect } from '@playwright/test';
  * 注意：这些测试需要后端服务运行在 localhost:8000
  */
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = process.env.E2E_API_BASE || 'http://localhost:8000';
 
 // Check if running in CI environment (no backend available)
 const isCI = process.env.CI === 'true';
@@ -22,13 +22,13 @@ async function createGenerationSession(userInput: string, mode: string = 'quick'
   const response = await fetch(`${API_BASE}/api/generation/create`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_input: userInput, mode }),
+    body: JSON.stringify({ user_input: userInput, mode, user_id: `e2e-test-${Date.now()}-${Math.random().toString(16).slice(2)}` }),
     signal: AbortSignal.timeout(15_000),
   });
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    throw new Error(`创建会话失败: ${err.detail || response.statusText}`);
+    throw new Error(`创建会话失败: ${typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail ?? err) || response.statusText}`);
   }
 
   const data = await response.json();
@@ -277,7 +277,7 @@ test.describe('Checkpoint API', () => {
     const response = await fetch(`${API_BASE}/api/generation/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_input: PROMPTS.technical, mode: 'full_control' }),
+      body: JSON.stringify({ user_input: PROMPTS.technical, mode: 'full_control', user_id: 'e2e-test' }),
       signal: AbortSignal.timeout(15_000),
     });
 
@@ -295,7 +295,7 @@ test.describe('Checkpoint API', () => {
     const response = await fetch(`${API_BASE}/api/generation/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_input: PROMPTS.technical, mode: 'full_control' }),
+      body: JSON.stringify({ user_input: PROMPTS.technical, mode: 'full_control', user_id: 'e2e-test' }),
       signal: AbortSignal.timeout(15_000),
     });
 

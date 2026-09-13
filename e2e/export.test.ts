@@ -28,7 +28,8 @@ const PROMPTS = {
 
 async function isBackendAvailable(): Promise<boolean> {
   try {
-    const resp = await fetch('http://localhost:8000/');
+    const base = process.env.E2E_API_BASE || 'http://localhost:8000';
+    const resp = await fetch(base + '/');
     return resp.ok;
   } catch {
     return false;
@@ -39,7 +40,7 @@ async function createSession(userInput: string, mode: string = 'quick'): Promise
   const response = await fetch('http://localhost:8000/api/generation/create', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_input: userInput, mode }),
+    body: JSON.stringify({ user_input: userInput, mode, user_id: `e2e-test-${Date.now()}-${Math.random().toString(16).slice(2)}` }),
     signal: AbortSignal.timeout(15_000),
   });
   
