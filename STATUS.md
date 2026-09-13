@@ -1,8 +1,8 @@
 # 云章PPT智能体系统 - 项目状态报告
 
-**更新日期**: 2026-09-13
-**当前阶段**: Phase 3 P1 全部交付；协作 MVP 后端已落地，前端精修 + 专属测试进行中
-**最新 Commit**: `0146a54`（协作 MVP SSE 后端）/ `523706a`（长文本优化分页引擎）
+**更新日期**: 2026-09-14
+**当前阶段**: Phase 3 P1 全部交付；协作 MVP 前端精修 + 3 项专属测试已完成（`6911a68`）；待推 GitHub 对齐
+**最新 Commit**: `6911a68`（协作 MVP 前端精修+测试）/ `0146a54`（SSE 后端）/ `523706a`（长文本优化）
 
 ## 团队配置
 
@@ -81,13 +81,14 @@
 ## 测试状态（最新）
 ```
 后端: 57/57 通过 ✅（4 个 async 测试有既有 pytest-asyncio 配置问题，非阻塞）
-前端 Vitest: 166/166 通过 ✅
+前端 Vitest: 173/173 通过 ✅（含 7 项协作专属测试）
 E2E: 55/56 通过（1 flaky，非代码缺陷）✅
 覆盖率: 93.57%（目标 ≥60%）✅
 ```
 
 ## Git 历史（近期）
 ```
+6911a68 feat(collab-mvp): 前端精修+3项专属测试（重连退避/回放去重/多订阅者/429）  ← Hermes/Codex
 523706a feat(keep-original): long-text pagination + SSE progress + empty input fallback  ← Claude
 0146a54 feat(collab-mvp): SSE real-time broadcast + collaboration frontend hooks          ← Hermes
 0a1c75d chore(db): unify dual yunzhang.db into backend/ single source + clean test quota records ← Claude
@@ -104,10 +105,10 @@ fc69cea fix(quota): async check_quota + usage_log schema + /create wiring       
 
 | 优先级 | 任务 | 负责人 | 状态 |
 |--------|------|--------|------|
-| P1 | 协作 MVP 前端精修（视觉规范补全） | @Codex | 🟡 进行中，基于 `0146a54` 基底 |
-| P1 | 协作 MVP 3 项专属测试（进度回放 / 429 不受影响 / 多订阅者并发） | @Codex | 🟡 进行中，`npx playwright test e2e/ --list` 语法验证前置 |
+| P1 | 协作 MVP 前端精修（视觉规范补全） | @Hermes | ✅ `6911a68` 已完成（进度条/心跳/错误态/重连退避） |
+| P1 | 协作 MVP 3 项专属测试（进度回放 / 429 不受影响 / 多订阅者并发） | @Hermes | ✅ `6911a68` 已完成（Vitest 7 项全绿，回放去重+重连退避+并发+429 不回归） |
 | P1 | 真实 Agnes key E2E 补跑（真实链路 + 429 连续 + 5000 字长文本端到端） | @Codex | ⏳ 待 JARVIS 提供 key 写入 `backend/.env`（已 gitignore）；不阻塞 P1 |
-| P1 | 8000 端口残留进程清理（PID 18268） | @Codex | ⏳ 补跑真实 key 前需清理，否则双写 `usage_log` 致 429 计数失真 |
+| P1 | 8000 端口残留进程清理（PID 18268） | @Codex | ✅ PID 18268 已自然消失，仅 8001 监听（双后端双写风险已消除） |
 | P2 | `database_url` 绝对路径改法（堵死 CWD 重建根目录 DB） | @Claude | ⏳ 待办保留 |
 | P4 | `slide_update` / `generation_complete` 生产端实现 | @Claude/@Codex | 协议层已预留，Phase 4 协作编辑流落地 |
 | P4 | 积分制设计文档（免费额度计数器之上） | @Claude | 协作 MVP 完成后启动 |
@@ -118,12 +119,12 @@ fc69cea fix(quota): async check_quota + usage_log schema + /create wiring       
 | ID | 描述 | 优先级 | 负责人 | 状态 |
 |----|------|--------|--------|------|
 | B1 | AI API Key 配置 | P1 | 待 JARVIS | 降级链已验证（Agnes→GLM→内置），真实 key 补跑可选 |
-| B3 | 8000 端口残留 PID 18268 杀不掉 | P1 | @Codex | 清理前避免 8000/8001 双后端并行 |
+| B3 | 8000 端口残留 PID 18268 杀不掉 | P1 | @Codex | ✅ 已自然消失，仅 8001 监听 |
 | B4 | Gamma.app 网络不通（Windows） | P2 | — | 竞品对比报告暂缺 Gamma 数据 |
 
 ## 下一步计划
 
-1. **协作 MVP 收尾**: @Codex 前端精修 + 3 项专属测试跑通 → Hermes 推 STATUS.md 最终对齐版（含协作 MVP 报告，与 `docs/e2e-baseline-report.md` 并列供 JARVIS 验收）
+1. **协作 MVP 收尾**: ✅ `6911a68` 前端精修 + 3 项专属测试已交付（Vitest 173/173）；STATUS.md 已对齐；待 @Codex 推 GitHub + 补跑真实 Agnes key E2E
 2. **真实 Agnes key 补跑**（可选）: JARVIS 提供 key → 写入 `backend/.env` → @Codex 补跑真实链路 E2E + 429 连续验证 + 5000 字长文本端到端；补跑前先清理 8000 端口残留
 3. **Phase 4 启动**: @Claude 积分制设计文档（非代码，协作 MVP 完成后开工）
 4. **生产部署**: @Hermes 制定部署方案
