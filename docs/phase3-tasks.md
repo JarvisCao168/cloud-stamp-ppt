@@ -51,13 +51,15 @@
 **预期收益**: 满足学术研究场景  
 **并行约束**: 只动 `_fill_keep_original()` 相关后端切分逻辑 + keep-original 开关周边组件
 
-**交付（commit `e1952ac`，2026-09-14）**:
+**交付（commit `523706a`，2026-09-14）**:
 - `_paginate_keep_original()` 分页引擎：标题行+内容行归组，内容超单页（8行）时继续分页；长段落按句子边界（。！？!?；;）拆行，无边界时按 300 字硬切，零字符丢失
 - 多页无标题时首行提升为页标题；单行兜底"要点"，杜绝无标题页
 - 空输入返回 `[]`，`_quick_mode_pipeline` 统一插入兜底标题页
 - SSE 事件：`stage="keep_original_progress"`，每页广播一条（`detail="保持原文分页 x/y"`, `pages=x`），已纳入锁版协议
 - 前端 `CollabStatusPanel` 补充 `keep_original_progress` 阶段标签
 - 后端单测：`test_keep_original.py` 16 项全绿（句子拆分/无丢失/多页标题提升/空输入契约/进度广播）
+- **符号名口径对齐（Claude 交付文档 vs 实际代码）**: 分页常量实际命名为 `_SLIDES_PER_PAGE=8`（单页最大内容行数）、`_MAX_PARA_CHARS=300`（单行最大字符数），位于 `backend/app/api/routes/generation.py:325-327`；交付文档中若以其他名称引用，以代码实际命名为准
+- **丢失判定口径补充**: 标题提升行计入该行所在页的内容行数统计，不按 `content` 字段单独统计；`_is_title_line()` 识别的短行（长度<40 且不以句号结尾）视为标题行，归入所在页首行，不额外占用分页槽位
 
 ### 6. 移动端适配（@Claude）
 **现状**: 仅即触AI/WPS AI 有移动端  

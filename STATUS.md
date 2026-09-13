@@ -1,8 +1,8 @@
 # 云章PPT智能体系统 - 项目状态报告
 
 **更新日期**: 2026-09-14
-**当前阶段**: Phase 3 P1 全部交付；协作 MVP 前端精修 + 3 项专属测试已完成（`6911a68`）；待推 GitHub 对齐
-**最新 Commit**: `6911a68`（协作 MVP 前端精修+测试）/ `0146a54`（SSE 后端）/ `523706a`（长文本优化）
+**当前阶段**: Phase 3 P1 全部交付 + 收尾提交完成（`c466fd2` 429 修复 + 双 DB 绝对路径锚定 + proxy 8001）
+**最新 Commit**: `c466fd2`（收尾：429/quota + DB 锚定 + proxy）/ `6911a68`（协作 MVP 前端精修+测试）/ `0146a54`（SSE 后端）/ `523706a`（长文本优化）
 
 ## 团队配置
 
@@ -74,9 +74,9 @@
 - `CheckpointPanel.tsx`：mobile `flex-col` + `min-w-0` + `break-words`
 - `RevealContainer.tsx`：`min-h-[300px] sm:min-h-[500px]`
 
-### 双 DB 统一（Claude `0a1c75d`）
+### 双 DB 统一 + 绝对路径锚定（Claude `0a1c75d` + `c466fd2`）
 - 根目录 `yunzhang.db` 删除，统一到 `backend/yunzhang.db`（含 `template_elements` 表）
-- 待办保留：`database_url` 绝对路径改法，彻底堵死 uvicorn CWD 重建根目录 DB 的风险
+- ✅ `config.py` 的 `database_url` + `.env_file` 改用 `Path(__file__).resolve()` 绝对路径锚定，彻底堵死 uvicorn CWD 漂移重建根目录 DB 的风险；dev proxy 同步指向 8001；429 响应体补 `message` 中文文案 + `reset_at` 次日 0 点语义（`c466fd2`）
 
 ## 测试状态（最新）
 ```
@@ -88,6 +88,8 @@ E2E: 55/56 通过（1 flaky，非代码缺陷）✅
 
 ## Git 历史（近期）
 ```
+c466fd2 fix(quota+db): 429 human-readable error + reset_at day-boundary + DB path anchoring + proxy to 8001  ← Claude
+27f5eba chore(status): STATUS.md 对齐 6911a68 协作 MVP 前端精修完成                       ← Hermes
 6911a68 feat(collab-mvp): 前端精修+3项专属测试（重连退避/回放去重/多订阅者/429）  ← Hermes/Codex
 523706a feat(keep-original): long-text pagination + SSE progress + empty input fallback  ← Claude
 0146a54 feat(collab-mvp): SSE real-time broadcast + collaboration frontend hooks          ← Hermes
@@ -109,7 +111,7 @@ fc69cea fix(quota): async check_quota + usage_log schema + /create wiring       
 | P1 | 协作 MVP 3 项专属测试（进度回放 / 429 不受影响 / 多订阅者并发） | @Hermes | ✅ `6911a68` 已完成（Vitest 7 项全绿，回放去重+重连退避+并发+429 不回归） |
 | P1 | 真实 Agnes key E2E 补跑（真实链路 + 429 连续 + 5000 字长文本端到端） | @Codex | ⏳ 待 JARVIS 提供 key 写入 `backend/.env`（已 gitignore）；不阻塞 P1 |
 | P1 | 8000 端口残留进程清理（PID 18268） | @Codex | ✅ PID 18268 已自然消失，仅 8001 监听（双后端双写风险已消除） |
-| P2 | `database_url` 绝对路径改法（堵死 CWD 重建根目录 DB） | @Claude | ⏳ 待办保留 |
+| P2 | `database_url` 绝对路径改法（堵死 CWD 重建根目录 DB） | @Claude | ✅ `c466fd2` 已交付（`config.py` 绝对路径锚定 + proxy→8001 + 根目录残留 DB 删除） |
 | P4 | `slide_update` / `generation_complete` 生产端实现 | @Claude/@Codex | 协议层已预留，Phase 4 协作编辑流落地 |
 | P4 | 积分制设计文档（免费额度计数器之上） | @Claude | 协作 MVP 完成后启动 |
 | P2 | 生产环境部署方案（Vercel/阿里云） | @Hermes | 待开始 |
@@ -124,7 +126,7 @@ fc69cea fix(quota): async check_quota + usage_log schema + /create wiring       
 
 ## 下一步计划
 
-1. **协作 MVP 收尾**: ✅ `6911a68` 前端精修 + 3 项专属测试已交付（Vitest 173/173）；STATUS.md 已对齐；待 @Codex 推 GitHub + 补跑真实 Agnes key E2E
+1. **协作 MVP 收尾**: ✅ `6911a68` 前端精修 + 3 项专属测试 + `c466fd2` 429/quota 修复 + 双 DB 绝对路径锚定 + proxy→8001 已全部推 GitHub；STATUS.md 已对齐
 2. **真实 Agnes key 补跑**（可选）: JARVIS 提供 key → 写入 `backend/.env` → @Codex 补跑真实链路 E2E + 429 连续验证 + 5000 字长文本端到端；补跑前先清理 8000 端口残留
 3. **Phase 4 启动**: @Claude 积分制设计文档（非代码，协作 MVP 完成后开工）
 4. **生产部署**: @Hermes 制定部署方案

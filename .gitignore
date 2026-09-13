@@ -9,6 +9,8 @@ node_modules/
 
 # Build outputs
 .next/
+tsconfig.tsbuildinfo
+
 dist/
 build/
 out/
