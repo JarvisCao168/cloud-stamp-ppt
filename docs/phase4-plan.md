@@ -2,8 +2,8 @@
 
 **日期**: 2026-09-14
 **作者**: Claude（首席架构师）
-**状态**: 设计稿 v0.1（非阻塞文档，纯设计、零代码改动；不依赖 Agnes key）
-**前置基线**: `7ff2dce`（Phase 3 P1 全部交付 + 429 路径验证归属勘误锁定）
+**状态**: 设计稿 v0.2（修订稿；Hermes 组长复核意见 + Claude 设计审查 findings 已并入，待组长终审）
+**前置基线**: `83fda71`（Phase 3 P1 全部交付 + `docs/phase4-plan.md` v0.1 首次落盘）
 
 > 本计划对应 STATUS.md 待办表中 P4 两行：
 > - 「积分制设计文档（免费额度计数器之上）」
@@ -25,11 +25,12 @@
 **总预算**: 约 2 人周（不含 G4 的 WebSocket 服务端选型与压测）。
 
 **验收标准（阶段出口）**:
-1. 新用户注册即赠 N 积分（默认 100），每日免费额度由「积分 ≥ 0」判定，429 响应体统一 schema（见 §三）；
-2. 配额面板在前端可见当前余额、当日消耗、`reset_at` 倒计时，充值入口可点击（占位页即可，支付通道另立项）；
-3. SSE 断线重连后可凭 `Last-Event-ID` 回放漏收事件，`generation_complete` 触发后前端渲染终态；
-4. 协作编辑：两人同时编辑同一 slide，后写者变更可见（乐观锁或 CRDT 二选一，见 §四）；
-5. 回归：E2E 基线 55/56 不劣化，Vitest ≥173 全绿。
+1. 每日免费额度改由积分路径判定（余额 ≥ 0 或免费额度未耗尽），`quota/status` 与 402/429 响应体统一 schema（见 §三）；
+   - **v0.2 修订**：删除 v0.1 中「注册即赠 N 积分（默认 100）」——§五 明确不做登录/注册，无「注册事件」可挂赠额（F#5）；赠额统一挪到登录体系立项后随 M4 之后的版本再开（见 §五 R5）。
+2. 配额面板在前端可见当前余额、当日消耗、`reset_at` 倒计时，充值入口可点击（占位页即可，支付通道另立项）；面板数据源 `GET /api/quota/status` 须走 §3.4 的鉴权规则（MVP 免鉴权仅限匿名账户自查询，禁止跨 user_id 枚举，见 §五 R6）；
+3. SSE 断线重连后可凭 `Last-Event-ID` 在**进度帧可回放边界内**回放漏收事件（进度帧不可回放的降级行为见 §4.2 修订 3），`generation_complete` 触发后前端渲染终态；
+4. 协作编辑：两人同时编辑同一 slide，后写者变更可见（乐观锁或 CRDT 二选一，见 §四）；`slide_update` 生产端在 G4 落地（见 §4.1 修订）；
+5. 回归：E2E 基线 55/56 不劣化，Vitest ≥173 全绿；**M1 切换后基线 429 连发用例改判 402 的判定源更新与本阶段 §五 R1 同 PR 完成，不得分叉**；**时区口径统一（§二 现状锚点勘误行）与 E2E 基线跨 UTC 边界的回归在同一窗口内验证一次**。
 
 ---
 
@@ -46,6 +47,7 @@
 | 双路由 | `generation.router` 同时挂在 `/api/generation` 与 `/api/collab` 前缀下 | `backend/app/main.py:50-52` |
 | 模型路由 | `ModelRoute.estimated_cost` / `estimated_tokens` 字段已定义但**未被消费**（全库 grep 无调用点） | `backend/app/core/model_router.py:24-31` |
 | 用户身份 | 无登录态，`user_id` 缺省 `anon-{IP}`，指纹存前端 localStorage | `generation.py:665-670` |
+| 时区口径（现状 bug） | `quota.py:15-18` `_today_start_utc()` 按 UTC 零点截断日窗；`generation.py:674-675` `reset_at` 却按本地时区（`datetime.now()`，无时区）次日 0 点计算 —— UTC+8 下偏差 8h，`generation.py:674` 注释「与 quota 重置口径一致」是错的；本阶段 §3.2 修复，统一 UTC | `quota.py:15-18`、`generation.py:674-675` |
 
 ---
 
@@ -76,7 +78,7 @@ CREATE INDEX idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
 设计取舍：
 - **积分余额与 usage_log 分离**：`usage_log` 保持审计口径不变（已有 E2E 基线与勘误记录锚定它），积分消耗走 `credit_ledger` 流水。
 - **扣减点**：`/create` 成功生成后按「整篇一次」扣费（沿用 usage_log 计数规则：不按段落拆分）。扣费在 `record_usage` 同一事务内完成，失败不回滚生成。
-- **迁移顺序**：`user_credits` 建表 + 种子（注册赠 100）→ `quota.py` 增加 `check_credits()` → `/create` 路由切换判定源 → 旧 `usage_log` 每日 10 次硬限**降级为告警日志**（不再 429）→ 一个观察期后下线。
+- **迁移顺序（v0.2 修订，对齐 §一 验收标准#1 / §五 R5）**：`user_credits` 建表（**不赠额**，`balance` 初值 = 0；`daily_cost` 列增补 `last_cost_date DATE NOT NULL` 日期锚点，供「当日消耗」清零语义，见 §3.4）→ `quota.py` 增加 `check_credits()`（免费额度 = 「余额 ≥ 0 或当日免费额度未耗尽」的复合判定，耗尽走 429 旧 schema，余额不足走 402 新 schema，见 §3.3 修订）→ `/create` 路由切换判定源 → 旧 `usage_log` 每日 10 次硬限**降级为告警日志**（不再 429）→ 一个观察期后下线。赠额统一挂到登录体系立项后（§五 明确不做登录/注册），不在 M1 内做「注册赠 100」。
 
 ### 3.2 计费公式（初版，可调）
 
@@ -90,30 +92,41 @@ CREATE INDEX idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
 - 积分单价与 `ModelRoute.estimated_cost` 联动：`estimated_tokens` 超阈值（HEAVY 默认 32K）时按 1.5× 系数。`estimated_cost`/`estimated_tokens` 字段在 `model_router.py` 已有、当前无消费点，本阶段正好接上。
 - 余额 < 所需积分 → **预扣失败即 402**（新增 `code=insufficient_credits`，与 429 区分：429 是限流、402 是没钱）。
 
-### 3.3 429 / 402 统一响应 schema（本阶段定稿，取代 MVP 嵌套结构）
+### 3.3 429 / 402 统一响应 schema（本阶段定稿，**并存**过渡 MVP 嵌套结构）
 
-MVP 嵌套结构（`detail={error, message, user_id, used, limit, reset_at}`，`generation.py:677-684`）保留兼容，Phase 4 起新增统一 `code` 字段：
+**v0.2 修订（对应 findings #4 / #3）**：v0.1 措辞「取代 MVP 嵌套结构」与正文「保留兼容」自相矛盾——同一响应体不可能既「取代」又「保留」；且 `raise HTTPException(status_code=429, detail={...})` 只能产出 `{"detail": {...}}`（嵌套结构），**平铺顶层 `code` 需要不同的响应机制**，v0.1 未说明机制。v0.2 定稿如下：
+
+- **响应机制**：统一 schema 的响应不走 `HTTPException(detail=...)`，改用 `JSONResponse(status_code=429/402, content={...})` 直接返回平铺顶层 `code`；或挂全局异常处理器统一转换。MVP 期间保留 `HTTPException` 嵌套结构作过渡（`generation.py:677-684` 现状不动），过渡窗口内**同一端点两种形态并存**：旧 429 走嵌套 `detail`（`error=daily_free_quota_exceeded`），新 402/429（积分制切换后）走平铺顶层 `code`。
+- **稳态 429 触发路径**：§3.1 说旧 10 次硬限降级为「告警日志（不再 429）」，v0.2 补一条**唯一保留的 429 路径**——积分制切换后，「当日免费额度（`FREE_DAILY_LIMIT` 折算的积分额度）耗尽且余额 = 0」仍发 429（`code=daily_free_quota_exceeded`），与 402（`code=insufficient_credits`，余额 < 所需且当日免费额度已耗尽）区分：429 = 免费额度耗尽（等次日重置或充值解锁），402 = 余额不足（充值解锁）。稳态下 429 有且仅有这一条触发路径，v0.1 的「429 统一 schema」验收措辞保留但限定在此路径内。
+- **schema 定稿（两种形态）**：
 
 ```json
+// 平铺顶层 code（新，Phase 4 切换后 / 402 或 429 唯一保留路径）
 {
-  "code": "daily_free_quota_exceeded",   // 或 "insufficient_credits"
-  "message": "今日免费额度已用完（10/10），请明天再试",
+  "code": "insufficient_credits",   // 或 "daily_free_quota_exceeded"
+  "message": "积分不足（余额 3 / 需 5），请充值或明日免费额度重置后再试",
   "user_id": "anon-…",
-  "usage": { "used": 10, "limit": 10, "reset_at": "2026-09-15 00:00:00" },
-  "credits": { "balance": 3, "required": 5 }   // 仅 402 时出现
+  "usage": { "used": 10, "limit": 10, "reset_at": "2026-09-15T00:00:00Z" },   // 仅 429 出现
+  "credits": { "balance": 3, "required": 5 }   // 仅 402 出现
 }
+
+// 嵌套 detail（MVP 过渡期保留，`generation.py:677-684` 现状）
+{ "detail": { "error": "daily_free_quota_exceeded", "message": "…", "user_id": "…", "used": 10, "limit": 10, "reset_at": "…" } }
 ```
 
-**proxy 层（`next.config.ts`）透传规则（与 Codex 拍板的「MVP 不加」对齐——MVP 不解析，本阶段在 proxy 加最小解析）**:
-1. 仅当上游状态码 ∈ {402, 429} 且 body 含 `code` 字段时，原样透传整个 body（不做结构转换）；
-2. 其余 4xx/5xx 一律原样透传（现状行为不变）；
-3. 前端 `api.ts` 统一拦截：`code=daily_free_quota_exceeded` → 配额面板展示 `usage.reset_at` 倒计时 + 「升级积分」CTA；`code=insufficient_credits` → 展示 `credits.balance/required` + 充值入口。
+- **proxy 层（`next.config.ts`）透传规则**（与 Codex 拍板的「MVP 不加」对齐——MVP 不解析，本阶段在 proxy 加最小解析）：
+  1. 仅当上游状态码 ∈ {402, 429} 且 body 顶层或 `body.detail` 含 `code`/`error` 字段时，原样透传整个 body（不做结构转换，MVP 嵌套结构与平铺结构都透传）；
+  2. 其余 4xx/5xx 一律原样透传（现状行为不变）；
+  3. 前端 `api.ts` 统一拦截：`code`/`detail.error` ∈ {`daily_free_quota_exceeded`} → 配额面板展示 `usage.reset_at` 倒计时 + 「升级积分」CTA；`code=insufficient_credits` → 展示 `credits.balance/required` + 充值入口。
+
+**M1 开工前前置动作（v0.2 新增，对应 findings #3/#4 对 E2E 基线的影响）**：切换判定源（旧 429 → 新 402 或新 429 唯一路径）前，须先与 Hermes 同步 E2E 基线 11 连发（10×200 + 1×429）的判定源更新口径——基线断言的是「状态码 = 429」还是「`detail.error=daily_free_quota_exceeded`」需三方（Hermes/Codex/我）各核一次 `docs/e2e-baseline-report.md` 与 `docs/collab-mvp-report.md` 的 429 路径验证节，确认断言粒度后再定 M1 是否需要同步改基线断言（若基线只断言状态码 429，则 M1 切换后 429 路径保留（唯一路径），基线不需改；若断言了嵌套 `detail` 结构，则需同步更新，随 M1 PR 一起推）。
 
 ### 3.4 前端配额面板
 
 - 新组件 `app/components/quota/CreditPanel.tsx`（文件级隔离，不碰 collab/keep-original 文件，沿用协作 MVP 的目录隔离约定）。
-- 展示：余额、当日消耗、`reset_at` 倒计时（仅免费额度模式）、积分流水最近 5 条。
-- 数据源：新增 `GET /api/quota/status?user_id=...`（返回 §3.3 schema 的 `usage` + `credits` 块，MVP 已有字段 + Phase 4 新字段）。
+- 展示：余额、当日消耗（`last_cost_date` 锚点做「当日」清零判定）、`reset_at` 倒计时（仅免费额度模式）、积分流水最近 5 条。
+- 数据源：新增 `GET /api/quota/status`（返回 §3.3 schema 的 `usage` + `credits` 块，MVP 已有字段 + Phase 4 新字段）。
+  - **鉴权规则（v0.2 新增，对应 findings #2 / R6）**：`quota/status` 必须绑定调用方自身的 `user_id`（来自同一 localStorage 指纹链路，与 `/create` 的 `quota_user_id` 同一来源），**不接受任意 `user_id` 查询参数**——v0.1 的 `?user_id=...` 写法在匿名指纹链路下是余额/流水 oracle，可枚举任意 user_id。MVP 过渡期（无登录）该端点只做「查询当前会话指纹对应的账户」，跨 user_id 查询一律 404（不区分「不存在」与「无权」，避免枚举探测）。登录体系立项后升级为 session-bound 鉴权。
 - 充值入口：占位页 `/pay`（支付通道选型另立项，不在本阶段范围）。
 
 ---
@@ -124,18 +137,24 @@ MVP 嵌套结构（`detail={error, message, user_id, used, limit, reset_at}`，`
 
 | 事件 | 触发 | data schema（本阶段定稿） |
 |------|------|--------------------------|
-| `slide_update` | 任一 slide 内容/样式变更后 | `{session_id, slide_index, op: "add"|"patch"|"remove", payload, rev}` |
-| `generation_complete` | 流水线终态（成功/失败/中止） | `{session_id, status: "success"|"error"|"aborted", slides_count, error?}` |
+| `slide_update` | 任一 slide 内容/样式变更后（**G4 落地**，见下行说明） | `{session_id, slide_index, op: "add"|"patch"|"remove", payload, rev}` |
+| `generation_complete` | 流水线**非暂停态**终态（成功/失败/中止） | `{session_id, status: "success"|"error"|"aborted", slides_count, error?}` |
 
-- 生产端落点：`generation.py` 三条流水线（quick/collaborative/full_control）在终态处 `collab_publish(session_id, "generation_complete", ...)`；`full_control` 检查点操作（`checkpoints.py`）每次 slide 变更后发布 `slide_update`。
+- **生产端落点（v0.2 修订，对应 findings #8）**：
+  - `generation_complete`：`generation.py` 三条流水线在**非暂停态终态**处 `collab_publish(session_id, "generation_complete", ...)`。v0.1 措辞「终态」对 `collaborative`/`full_control` 两条流水线不成立——二者 `/create` 返回的是 checkpoint 暂停态（`GenerationResponse.status` 非终态），不是流水线终态；只有 `quick` 模式 `/create` 直接返回真终态。v0.2 明确：`generation_complete` 只在「无待处理检查点」的终态发，暂停态不发（改由 `collab_status` 的 `status` 字段标记暂停）。
+  - `slide_update`：v0.1 写「`full_control` 检查点操作（`checkpoints.py`）每次 slide 变更后发布」有误——`checkpoints.py` 实测只有 `GET /flow/{session_id}` + `POST /flow/{session_id}/action`（记录决策），全后端**无 slide 编辑端点**（我侧 grep 全库确认）。`slide_update` 生产端改挂 **G4 WebSocket 编辑路由**（M4 落地时才有生产端；M3 内该事件只定 schema、不实现生产端，客户端侧 `useCollabStream.ts` 先行预留 type + 去重指纹即可）。
 - **事件序号**：广播总线为每条事件分配单调递增 `event_id`（每会话 1 起），写入 SSE 帧 `id:` 字段 —— 这是 `Last-Event-ID` 断点续传的前提（现状总线只保留最近 100 条且无序号，MVP 靠 join 全量回放）。
 
 ### 4.2 `Last-Event-ID` 断点续传
 
 1. 客户端重连时带 `Last-Event-ID: N`（浏览器 `EventSource` 自动带，自定义 SSE 需手动）；
-2. 服务端从会话事件环形缓冲（容量 100，现状不变）取 `id > N` 的帧回放，缓冲外则降级为全量 `snapshot` 重发；
-3. 鉴权：MVP 依赖 `session_id` 透传（无鉴权，已知风险）；本阶段加 **per-session token**（`snapshot` 事件中下发一次性 token，后续事件帧校验），token 存内存，会话结束即失效；
-4. 出口验收：断网 30s → 恢复后事件无重复无丢失（回放去重指纹 `(event_id)` 替代现状 `(stage, pages, detail)`，`useCollabStream.ts:118`）。
+2. 服务端从会话事件缓冲（现状 `generation.py:35-50` 为 `list + append + pop(0)` FIFO，非 deque，容量 100）取 `id > N` 的帧回放；缓冲外则降级为全量 `snapshot` 重发；
+3. **进度帧可回放边界（v0.2 修订，对应 findings #9）**：v0.1 未界定 `snapshot` 是否含 `generation_progress`——实测 `_collab_snapshot()`（`generation.py:55-63`）只含 `mode/slides_count`，不含进度帧。v0.2 定稿两条边界：
+   - **A 案（推荐）**：`snapshot` 增补当前进度帧（`stage`/`currentSlide`/`percent`），使降级重发可恢复进度上下文；缓冲外的漏收进度帧统一收敛到 snapshot 重发，不做「逐帧补发」（逐帧补发与「缓冲外」语义矛盾）。
+   - **B 案**：明确「进度不可回放」边界——`generation_progress` 是瞬态通知帧，缓冲外漏收即丢，客户端靠 `generation_complete` 终态帧兜底渲染；snapshot 不含进度帧。
+   两案二选一在 M3 评审时拍板（我侧倾向 A，成本约 +10 行，用户体验更完整）；无论选 A 或 B，`slide_update`/`generation_complete` 属持久帧，必须走 `event_id` 断点续传回放，不受此边界影响。
+4. 鉴权（v0.2 修订，对应 findings #6）：MVP 依赖 `session_id` 透传（无鉴权，已知风险）；本阶段加 **session-lifetime token**——token 在会话**创建时**生成（非「随每次 `snapshot` 下发」，v0.1 措辞有误：`generation.py:88` snapshot 每次 join 重发，新连接每次 join 都会重发 snapshot，若 token 绑定在 snapshot 上则「一次性」与「后续帧逐帧校验」互斥），存内存（`_collab_tokens: Dict[session_id, token]`），`Last-Event-ID` 重连时校验该 token 是否属于该 session；token 生命周期 = 会话生命周期（会话结束/超时清理时失效），**非**一次性。
+5. 出口验收：断网 30s → 恢复后事件无重复无丢失（回放去重指纹 `(event_id)` 替代现状 `(stage, pages, detail)`，`useCollabStream.ts:118`）。
 
 ### 4.3 协作编辑流（G4）
 
@@ -148,7 +167,7 @@ MVP 嵌套结构（`detail={error, message, user_id, used, limit, reset_at}`，`
 ### 4.4 与现有组件的接口
 
 - `useCollabStream.ts`：新增 2 个事件 type（`slide_update`/`generation_complete`），`processedProgressRef` 去重指纹升级为 `event_id`；`Last-Event-ID` 由 `es.onopen` 时从本地存储读取重连前最后 id。
-- `CollabStatusPanel.tsx`：`generation_complete` 终态渲染（status=success 转绿 / error 转 rose 错误态，复用现有断线错误态样式）；`slide_update` 驱动进度条按 slide 粒度推进（`currentSlide` 字段已预留于 `useCollabStream.ts:34`，本阶段启用）。
+- `CollabStatusPanel.tsx`：`generation_complete` 终态渲染（status=success 转绿 / error 转 rose 错误态）——**v0.2 修订（对应 findings 表「CollabStatusPanel 终态渲染」勘误行）**：该组件现状**无任何 `generation_complete` 处理分支**，success 态渲染是**全新**渲染逻辑，不是「复用现有断线错误态样式」（v0.1 措辞不准确）；rose 错误态可**部分复用**现有断线错误态的 `animate-pulse` 底色类，但 success 绿色态须新写。`slide_update` 驱动进度条按 slide 粒度推进（`currentSlide` 字段已预留于 `useCollabStream.ts:34`，本阶段启用）。
 - 测试：`__tests__/collabStream.test.ts` 扩 4 项（event_id 去重、Last-Event-ID 回放、generation_complete 终态、slide_update 驱动进度）；E2E 基线 55/56 补 1 项断线回放（1 flaky 项维持现状，另计 retry 加固任务）。
 
 ---
@@ -167,10 +186,22 @@ MVP 嵌套结构（`detail={error, message, user_id, used, limit, reset_at}`，`
 - **R2 双路由前缀（`/api/generation` + `/api/collab`）**：事件序号若在两条前缀分别起算会乱序——序号总线挂在 `session_id` 维度而非路由维度，路由前缀只影响 URL，不影响 `event_id`。
 - **R3 `anon-{IP}` 指纹不稳**（NAT/代理环境 IP 漂移 → 积分账户串号）：本阶段不做登录，接受该限制并在配额面板文案标注「匿名账户积分不跨设备」；登录体系另立项。
 - **R4 长文本 8000+ 字 ×1.5 系数**：系数拍脑袋值，上线前用 5000/8000/15000 三档实测 token 消耗回归校准（数据在材料库 Phase 2 预研，见 MEMORY 材料库条目）。
+- **R5 `user_id` 轮换领赠（v0.2 新增，对应 findings #1）**：v0.1 曾设想「注册赠 100」，但 `user_id` 来自客户端（localStorage 指纹 / 请求体可覆盖），无服务端锚定（`generation.py:665-670`），无登录闸门 → 客户端可主动轮换 user_id 无限刷白嫖赠额。v0.2 对策：**M1 不赠额**（`user_credits.balance` 初值 = 0，不做「首见 user_id 赠 100」逻辑），赠额统一挂到登录体系立项后（随 M4 之后的版本再开）；若后续做登录，赠额须绑定服务端可验证的身份锚点（登录 session），不复用 anon 指纹。
+- **R6 `quota/status` oracle（v0.2 新增，对应 findings #2）**：v0.1 §3.4 写的 `GET /api/quota/status?user_id=...` 在无鉴权下可枚举任意 user_id 读余额 + 流水 5 条 = 敏感数据 oracle。v0.2 对策：§3.4 已改为「端点不接受任意 `user_id` 查询参数，只查当前会话指纹对应账户，跨 user_id 查询一律 404」。登录体系立项后升级为 session-bound 鉴权。
+
+**P1 修复节（v0.2 新增，对应 findings #7 / #8 / #9 / #10，M1 开工前须随本文件一起推上）**:
+- **P1-#7 时区错配（真 bug，现状即存在）**：`quota.py:15-18` `_today_start_utc()` 按 UTC 零点截断日窗；`generation.py:674-675` `reset_at` 用 `datetime.now()`（本地时区，无时区对象）次日 0 点计算，注释「与 quota 重置口径一致」是错的（UTC+8 下偏差 8h，UI 倒计时到点仍 429）。**修复方案（≤5 行，M1 开工前顺手修，与 doc 缺陷一起修掉）**：
+  1. `generation.py:674-675` 改为 `now = datetime.now(timezone.utc)`，`reset_at` 按 UTC 次日 0 点计算，`strftime("%Y-%m-%dT%H:%M:%SZ")`；
+  2. `generation.py:674` 注释勘误为「与 quota 重置口径一致（均按 UTC 零点）」；
+  3. 不动 `quota.py`（其口径本就正确，bug 在 `generation.py` 误用本地时区）。
+  改动不影响 E2E 基线 429 连发路径（不跨 UTC 边界），须与 §一 验收标准#5「时区口径统一」的同一窗口内验证一次。
+- **P1-#8 `slide_update` 生产端改挂 G4**：见 §4.1 修订（`checkpoints.py` 无 slide 编辑端点，`slide_update` 生产端改挂 G4 WebSocket 编辑路由，M3 内只定 schema + 客户端预留 type）。
+- **P1-#9 snapshot 增补进度帧或明确边界**：见 §4.2 修订（A/B 案二选一，M3 评审拍板，我侧倾向 A）。
+- **P1-#10 `user_credits.daily_cost` 增补 `last_cost_date` 列**：见 §3.1 修订（「当日消耗」须有日期锚点做清零语义，否则跨日不重置）。
 
 **明确不做（本阶段边界外）**:
 - 支付通道选型/接入（仅占位 `/pay`）
-- 登录/注册体系（沿用 `anon-{IP}` 指纹 + localStorage）
+- 登录/注册体系（沿用 `anon-{IP}` 指纹 + localStorage；赠额挂到登录体系立项后，见 R5）
 - 字符级协同编辑（slide 级够用，CRDT 留后手）
 - 多区域部署下的配额一致性（当前单实例 SQLite，`config.py` 已绝对路径锚定 `backend/yunzhang.db`；多实例时配额表需迁移，另立项）
 
@@ -181,3 +212,4 @@ MVP 嵌套结构（`detail={error, message, user_id, used, limit, reset_at}`，`
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | v0.1 | 2026-09-14 | 初稿（Claude）：基于 `7ff2dce` 基线实测现状锚点撰写；429 响应体口径与 `72cf9cc` 勘误记录对齐 |
+| v0.2 | 2026-09-14 | 修订稿（Claude）：并入 Hermes 组长复核意见（9 条成立 / 2 条部分成立判定）+ Claude 设计审查 findings 11 条（P0 6 条 + P1 4 条 + P2 1 条）。变更点：§一 验收标准#1 删「注册赠 N 积分」；§二 新增时区错配 bug 行；§3.1 迁移顺序去赠额 + `daily_cost` 增 `last_cost_date`；§3.3 定稿 429/402 并存 schema + 唯一 429 路径 + JSONResponse 机制 + M1 前置基线断言粒度确认；§3.4 `quota/status` 鉴权规则（禁跨 user_id 枚举）；§4.1 `generation_complete` 改非暂停态终态 + `slide_update` 改挂 G4；§4.2 进度帧可回放边界（A/B 案）+ session-lifetime token；§4.4 `CollabStatusPanel` success 态渲染勘误；§五 新增 R5/R6 + P1 修复节（#7 时区 / #8 / #9 / #10） |

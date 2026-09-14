@@ -2,7 +2,7 @@
 
 **更新日期**: 2026-09-14
 **当前阶段**: Phase 3 P1 全部交付 + 收尾提交完成（`451e25d` 文档口径对齐 + 解除跟踪）
-**最新 Commit**: `72cf9cc`（补建 `docs/collab-mvp-report.md`：429 路径验证 + 幂等断言两节，含勘误记录）/ `722ebb1`（429 关闭决策同步）/ `4953829`（STATUS 对齐）/ `451e25d`（收尾：符号名/丢失判定口径对齐 + 文档清理 + 解除跟踪）/ `c466fd2`（429/quota + DB 锚定 + proxy）/ `6911a68`（协作 MVP 前端精修+测试）/ `0146a54`（SSE 后端）/ `523706a`（长文本优化）
+**最新 Commit**: `83fda71`（STATUS.md DDL/429 口径行补录 + `docs/phase4-plan.md` v0.1 新建）/ `7ff2dce`（STATUS.md 测试状态块勘误 + commit 表补录）/ `72cf9cc`（补建 `docs/collab-mvp-report.md`）/ `722ebb1`（429 关闭决策同步）/ `4953829`（STATUS 对齐）/ `451e25d`（收尾：符号名/丢失判定口径对齐 + 文档清理 + 解除跟踪）/ `c466fd2`（429/quota + DB 锚定 + proxy）/ `6911a68`（协作 MVP 前端精修+测试）/ `0146a54`（SSE 后端）/ `523706a`（长文本优化）
 
 ## 团队配置
 
@@ -89,8 +89,12 @@ E2E: 55/56 通过（1 flaky，非代码缺陷）✅（429 路径 11 连发 = 10�
 
 **DB / 429 响应体口径（`72cf9cc` 勘误锁定）**: `usage_log` 实际 DDL 为主键 `(user_id, generated_at)` + 索引 `idx_usage_log_user_date(user_id, generated_at)`，无自增 `id`、无 `date` 列（`db.py` 实测）；429 响应体为嵌套结构 `detail={error/message/user_id/used/limit/reset_at}`（`generation.py:677-684` 实测，`reset_at` 为本地次日 0 点）；幂等语义为「同日超限短路 429」（`INSERT OR REPLACE` + 微秒精度 `generated_at`），非请求级去重
 
+**Phase 4 设计文档（`83fda71` 起）**: v0.1 已交付；Claude 设计审查 + Hermes 组长复核完成，11 条 findings 已并入 **v0.2 修订稿**（工作区未推）。**下游请勿把 v0.1 当锁定 schema 直接实施**——v0.1 含 6 条 P0 矛盾（429/402 触发矩阵未定稿、`quota/status` oracle、`slide_update` 生产端错位等）+ 4 条 P1 缺口 + 1 条现状时区 bug（`quota.py` UTC / `generation.py` 本地时区错配）。v0.2 修完这三类后待 Hermes 组长终审 + JARVIS 终审，通过后 M1 方可排期；`quota.py`/`generation.py` 时区 bug 修复（P1-#7）随 v0.2 一次推完。
+
 ## Git 历史（近期）
 ```
+83fda71 docs(phase4): 补建 phase4-plan.md v0.1 积分制设计 + STATUS.md 补录 DDL/429 口径行  ← Claude
+7ff2dce docs(status): STATUS.md 对齐 72cf9cc — 登记 429 路径验证归属勘误（E2E 承担，非 test_keep_original）  ← Claude
 72cf9cc docs: 补建 collab-mvp-report（429 路径验证 + 幂等断言两节，基线 722ebb1，含对 Hermes 参考稿的勘误记录）  ← Codex
 722ebb1 docs(status): 429 结构化透传关闭决策同步 — STATUS.md + phase3-tasks.md 标注 MVP 不加，格式留 Phase 4 配额面板  ← Hermes
 4953829 docs(status): STATUS.md 对齐 451e25d 收尾提交 — 登记 P3 429 透传待决 + 补 commit 表                  ← Hermes
@@ -120,7 +124,7 @@ fc69cea fix(quota): async check_quota + usage_log schema + /create wiring       
 | P1 | 8000 端口残留进程清理（PID 18268） | @Codex | ✅ PID 18268 已自然消失，仅 8001 监听（双后端双写风险已消除） |
 | P2 | `database_url` 绝对路径改法（堵死 CWD 重建根目录 DB） | @Claude | ✅ `c466fd2` 已交付（`config.py` 绝对路径锚定 + proxy→8001 + 根目录残留 DB 删除） |
 | P4 | `slide_update` / `generation_complete` 生产端实现 + 429 结构化透传字段格式 + `Last-Event-ID` 断点续传/独立鉴权 | @Claude/@Codex | 协议层已预留；MVP 关闭 429 透传决策（Codex 拍板），格式随 Phase 4 配额面板 + 协作编辑流统一定 |
-| P4 | 积分制设计文档（免费额度计数器之上） | @Claude | ✅ v0.1 设计稿已交付 `docs/phase4-plan.md`（纯设计零代码：积分账户表 + 429/402 统一 schema + SSE 生产端/Last-Event-ID + 协作编辑流） |
+| P4 | 积分制设计文档（免费额度计数器之上） | @Claude | ✅ v0.2 修订稿已推 `docs/phase4-plan.md`（并入 Hermes 复核意见 + Claude 设计审查 11 条 findings；含 6 条 P0 矛盾修复 + 4 条 P1 缺口 + R5/R6 风险登记 + P1 时区 bug 修复节；纯设计零代码，**M1 排期待 Hermes 组长终审 + JARVIS 终审通过后启动**） |
 | P2 | 生产环境部署方案（Vercel/阿里云） | @Hermes | 待开始 |
 | ~~P3~~ | `next.config.ts` 429 结构化错误透传（FastAPI 429 body 的 `message`/`used`/`limit`/`reset_at` 转发给前端） | @Codex 拍板 | ✅ 关闭 — MVP 不加 proxy 层 429 结构化透传（避免错误解析耦合），字段格式与 `Last-Event-ID` 鉴权一并留到 Phase 4 配额面板 + 协作编辑流统一定 |
 
