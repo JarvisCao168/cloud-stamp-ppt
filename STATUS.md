@@ -1,8 +1,8 @@
 # 云章PPT智能体系统 - 项目状态报告
 
 **更新日期**: 2026-09-14
-**当前阶段**: Phase 3 P1 全部交付 + Phase 4 设计文档 v0.2.2 组长终审通过（终审 commit 待推 origin/master，M1 排期门槛 = 终审 commit 进 origin/master）
-**最新 Commit**: （待推）`docs(phase4): v0.2.2 终审定稿 — §3.3 429/402 schema 收敛为单一平铺形态 + P1-#7 时区勘误定位 + Codex E2E 断言粒度核认 + STATUS.md 背书降调` / `d0dbac3`（v0.2.1 终审 4 条 WARN 补完：#6 token 语义 / #9 snapshot 边界 / #10 last_cost_date DDL / #12 version 列 + M2 扣减 SQL）/ `2778887`（v0.2 补漏：findings #12/#13 DDL 并入 + 并发扣减方案）/ `83a7ac2`（v0.2 修订稿：并入 Hermes 组长复核意见 9 成立/2 部分 + Claude 设计审查 11 条 findings）/ `83fda71`（v0.1 新建 + STATUS.md DDL/429 口径行补录）/ `7ff2dce`（STATUS.md 测试状态块勘误 + commit 表补录）/ `72cf9cc`（补建 `docs/collab-mvp-report.md`）/ `722ebb1`（429 关闭决策同步）/ `4953829`（STATUS 对齐）/ `451e25d`（收尾：符号名/丢失判定口径对齐 + 文档清理 + 解除跟踪）/ `c466fd2`（429/quota + DB 锚定 + proxy）/ `6911a68`（协作 MVP 前端精修+测试）/ `0146a54`（SSE 后端）/ `523706a`（长文本优化）
+**当前阶段**: Phase 3 P1 全部交付 + Phase 4 设计文档 v0.2.2.1 组长终审通过（终审 commit `0a486f8` 已进 origin/master，M1 排期门槛已满足；JARVIS 终审通过即启动 M1）
+**最新 Commit**: `0a486f8`（v0.2.2 终审定稿：§3.3 429/402 schema 收敛为单一平铺形态 + P1-#7 时区勘误定位 + Codex E2E 断言粒度核认 + STATUS.md 背书降调） / `d0dbac3`（v0.2.1 终审 4 条 WARN 补完：#6 token 语义 / #9 snapshot 边界 / #10 last_cost_date DDL / #12 version 列 + M2 扣减 SQL）/ `2778887`（v0.2 补漏：findings #12/#13 DDL 并入 + 并发扣减方案）/ `83a7ac2`（v0.2 修订稿：并入 Hermes 组长复核意见 9 成立/2 部分 + Claude 设计审查 11 条 findings）/ `83fda71`（v0.1 新建 + STATUS.md DDL/429 口径行补录）/ `7ff2dce`（STATUS.md 测试状态块勘误 + commit 表补录）/ `72cf9cc`（补建 `docs/collab-mvp-report.md`）/ `722ebb1`（429 关闭决策同步）/ `4953829`（STATUS 对齐）/ `451e25d`（收尾：符号名/丢失判定口径对齐 + 文档清理 + 解除跟踪）/ `c466fd2`（429/quota + DB 锚定 + proxy）/ `6911a68`（协作 MVP 前端精修+测试）/ `0146a54`（SSE 后端）/ `523706a`（长文本优化）
 
 ## 团队配置
 
@@ -89,12 +89,13 @@ E2E: 55/56 通过（1 flaky，非代码缺陷）✅（429 路径 11 连发 = 10�
 
 **DB / 429 响应体口径（`72cf9cc` 勘误锁定）**: `usage_log` 实际 DDL 为主键 `(user_id, generated_at)` + 索引 `idx_usage_log_user_date(user_id, generated_at)`，无自增 `id`、无 `date` 列（`db.py` 实测）；429 响应体为嵌套结构 `detail={error/message/user_id/used/limit/reset_at}`（`generation.py:677-684` 实测，`reset_at` 为本地次日 0 点）；幂等语义为「同日超限短路 429」（`INSERT OR REPLACE` + 微秒精度 `generated_at`），非请求级去重
 
-**Phase 4 设计文档（`83fda71` → 终审定稿 v0.2.2）**: 演进 v0.1 → v0.2（`83a7ac2`，并入 Hermes 组长复核 9 成立/2 部分 + Claude 设计审查 11 条 findings）→ v0.2.1（`2778887` 补漏 #12/#13 + `d0dbac3` 补完 4 条终审 WARN）→ **v0.2.2（本次终审 commit 待推 origin/master，M1 排期门槛）**。终审通过（Hermes，见下）；待 JARVIS 终审后启动 M1。**下游请勿把 v0.1/v0.2.1 当锁定 schema 直接实施**——v0.1 含 6 条 P0 矛盾 + 4 条 P1 缺口 + 1 条现状时区 bug（`quota.py` UTC 口径正确 / `generation.py:674-675` 误用本地时区，P1-#7 修复节已给 ≤5 行方案，随 M1 开工 PR 推）；v0.2.2 定稿收敛 §3.3 429/402 schema 为单一平铺形态（原 v0.2.1「双形态并存过渡」兼容段删除，M1 切换完成后嵌套 `detail` 形态下线，proxy 透传规则相应简化为只解析顶层 `code`）；M2 并发扣减 SQL 口径（`WHERE version=?` 原子更新 + 重试 3 次上限）已定。
+**Phase 4 设计文档（`83fda71` → 终审定稿 v0.2.2）**: 演进 v0.1 → v0.2（`83a7ac2`，并入 Hermes 组长复核 9 成立/2 部分 + Claude 设计审查 11 条 findings）→ v0.2.1（`2778887` 补漏 #12/#13 + `d0dbac3` 补完 4 条终审 WARN）→ **v0.2.2（`0a486f8` 已进 origin/master，M1 排期门槛已满足）**。终审通过（Hermes，见下）；待 JARVIS 终审后启动 M1。**下游请勿把 v0.1/v0.2.1 当锁定 schema 直接实施**——v0.1 含 6 条 P0 矛盾 + 4 条 P1 缺口 + 1 条现状时区 bug（`quota.py` UTC 口径正确 / `generation.py:674-675` 误用本地时区，P1-#7 修复节已给 ≤5 行方案，随 M1 开工 PR 推）；v0.2.2 定稿收敛 §3.3 429/402 schema 为单一平铺形态（原 v0.2.1「双形态并存过渡」兼容段删除，M1 切换完成后嵌套 `detail` 形态下线，proxy 透传规则相应简化为只解析顶层 `code`）；M2 并发扣减 SQL 口径（`WHERE version=?` 原子更新 + 重试 3 次上限）已定。
 
 **组长终审结果（Hermes，2026-09-14）**: 11 条 findings 全部核认已并入 v0.2.2（P0 六条：#1 不赠额 / #2 跨 user_id 一律 404 / #3 429 唯一保留路径定稿 / #4 平铺 JSONResponse 机制写明 + 过渡兼容段删除 / #6 session-lifetime token / #11 本块背书降调随终审 commit 一次推上，不单独起提交）+ P1 四条（#7 时区 bug 修复节，勘误定位明确不动 `quota.py`、只改 `generation.py:674-675` / #8 `slide_update` 改挂 G4 / #9 A/B 案边界 / #10 `last_cost_date` 列）+ Codex 补充 #12（`version` 乐观锁列 + M2 扣减 SQL）/#13（`credit_ledger` 已有 `idx_credit_ledger_user_time` 索引，无需另开）。终审意见 3 条 NIT（非阻塞）已并入本次终审 commit：① E2E 基线 429 断言粒度三方共核前置项已完成——Hermes/Codex/Claude 共核：`e2e-baseline-report.md`「429 免费额度路径验证」节 + `collab-mvp-report.md`「429 路径验证节」均只断言「状态码 = 429 + `message`/`error` 字段存在」，**未断言嵌套 `detail` 结构本身**；且 `e2e/` 目录 grep `429` 零命中（11 连发验证是报告层操作记录，非 e2e 用例断言）→ **M1 切换判定源后稳态 429 唯一路径保留，基线不需改断言**，M1 PR 仅需同步改 `reset_at` 值（UTC 口径）；② v0.2.1 §4.2.2 缓冲外降级引用了「§4.2.3」但该节不存在（实际边界声明在 §4.2 第 3 条内），引用号笔误，v0.2.2 已修正为「见下行第 3 条」；③ v0.2.1 §3.3 平铺 schema 的 429 `usage.reset_at` 示例值 `2026-09-15T00:00:00Z` 为 UTC 格式，与现状 `generation.py:676` 本地格式（`2026-09-15 00:00:00`）不同——P1-#7 修复后 reset_at 统一 UTC ISO 格式，该示例值即成正确目标值，无冲突。
 
 ## Git 历史（近期）
 ```
+0a486f8 docs(phase4): v0.2.2 终审定稿 — 组长终审 commit（§3.3 schema 收敛 + P1-#7 时区勘误定位 + E2E 断言粒度核认 + STATUS.md 背书降调）  ← Hermes
 d0dbac3 docs(phase4): v0.2.1 终审补完 4 条 WARN（#6 token 语义 / #9 snapshot 边界 / #10 last_cost_date DDL / #12 version 列）  ← Claude
 2778887 docs(phase4): v0.2 补漏 — G1 DDL 并入 findings #12/#13（version 乐观锁列 + last_cost_date 日期锚点）+ 并发扣减方案  ← Claude
 83a7ac2 docs(phase4): v0.2 修订稿 — 并入 Hermes 组长复核（9 成立/2 部分）+ Claude 设计审查 11 条 findings（P0 6 / P1 4 / P2 1）+ STATUS.md 背书降调  ← Claude
