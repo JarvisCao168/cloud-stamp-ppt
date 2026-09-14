@@ -61,6 +61,8 @@ CREATE TABLE IF NOT EXISTS user_credits (
     user_id        TEXT PRIMARY KEY,
     balance        INTEGER NOT NULL DEFAULT 0,   -- 当前积分余额
     daily_cost     INTEGER NOT NULL DEFAULT 0,   -- 当日已扣积分
+    last_cost_date DATE     NOT NULL DEFAULT '1970-01-01',  -- 当日消耗清零锚点（§3.4 面板「当日消耗」语义）
+    version        INTEGER NOT NULL DEFAULT 0,   -- 乐观锁列：M2 扣减 SQL 用 WHERE version=? 原子更新（防并发双扣）
     updated_at     TIMESTAMP NOT NULL
 );
 
@@ -78,6 +80,7 @@ CREATE INDEX idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
 设计取舍：
 - **积分余额与 usage_log 分离**：`usage_log` 保持审计口径不变（已有 E2E 基线与勘误记录锚定它），积分消耗走 `credit_ledger` 流水。
 - **扣减点**：`/create` 成功生成后按「整篇一次」扣费（沿用 usage_log 计数规则：不按段落拆分）。扣费在 `record_usage` 同一事务内完成，失败不回滚生成。
+- **并发扣减（v0.2 修订，对应 findings #12）**：M2 接入 `/create` 扣减时，同一 `user_id` 并发两个 `/create` 存在竞态读 balance → 双扣或负余额风险。M1 DDL 已带 `version` 乐观锁列，M2 扣减 SQL 定为 `UPDATE user_credits SET balance=?, daily_cost=?, version=version+1 WHERE user_id=? AND version=?`，影响行数 = 0（版本已被并发请求推进）时**重试**（上限 3 次，仍冲突则 503），不做悲观锁（SQLite 写锁粒度太粗）。
 - **迁移顺序（v0.2 修订，对齐 §一 验收标准#1 / §五 R5）**：`user_credits` 建表（**不赠额**，`balance` 初值 = 0；`daily_cost` 列增补 `last_cost_date DATE NOT NULL` 日期锚点，供「当日消耗」清零语义，见 §3.4）→ `quota.py` 增加 `check_credits()`（免费额度 = 「余额 ≥ 0 或当日免费额度未耗尽」的复合判定，耗尽走 429 旧 schema，余额不足走 402 新 schema，见 §3.3 修订）→ `/create` 路由切换判定源 → 旧 `usage_log` 每日 10 次硬限**降级为告警日志**（不再 429）→ 一个观察期后下线。赠额统一挂到登录体系立项后（§五 明确不做登录/注册），不在 M1 内做「注册赠 100」。
 
 ### 3.2 计费公式（初版，可调）
@@ -213,3 +216,4 @@ CREATE INDEX idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
 |------|------|------|
 | v0.1 | 2026-09-14 | 初稿（Claude）：基于 `7ff2dce` 基线实测现状锚点撰写；429 响应体口径与 `72cf9cc` 勘误记录对齐 |
 | v0.2 | 2026-09-14 | 修订稿（Claude）：并入 Hermes 组长复核意见（9 条成立 / 2 条部分成立判定）+ Claude 设计审查 findings 11 条（P0 6 条 + P1 4 条 + P2 1 条）。变更点：§一 验收标准#1 删「注册赠 N 积分」；§二 新增时区错配 bug 行；§3.1 迁移顺序去赠额 + `daily_cost` 增 `last_cost_date`；§3.3 定稿 429/402 并存 schema + 唯一 429 路径 + JSONResponse 机制 + M1 前置基线断言粒度确认；§3.4 `quota/status` 鉴权规则（禁跨 user_id 枚举）；§4.1 `generation_complete` 改非暂停态终态 + `slide_update` 改挂 G4；§4.2 进度帧可回放边界（A/B 案）+ session-lifetime token；§4.4 `CollabStatusPanel` success 态渲染勘误；§五 新增 R5/R6 + P1 修复节（#7 时区 / #8 / #9 / #10） |
+| v0.2.1 | 2026-09-14 | 终审补完（Claude）：按 Hermes 组长终审 4 条 WARN 补齐——#6 §4.2.4 token 语义改 session-lifetime（会话创建时生成，多用途，非「一次性」）；#9 §4.2.2 加「缓冲外降级 snapshot 时进度帧不可回放」边界声明（A 案未拍板前默认 B 案语义，M3 拍板 A 则 snapshot payload 增补 `current_stage`/`current_slide`）；#10 §3.1 DDL 补 `last_cost_date DATE NOT NULL DEFAULT '1970-01-01'` 列；#12 §3.1 DDL 补 `version INTEGER NOT NULL DEFAULT 0` 乐观锁列 + M2 扣减 SQL `WHERE version=?` 原子更新口径。对应 Codex 补充 findings #12/#13（#13 已有 `idx_credit_ledger_user_time` 索引无需另开） |
