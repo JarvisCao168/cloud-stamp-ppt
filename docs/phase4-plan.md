@@ -2,7 +2,7 @@
 
 **日期**: 2026-09-14
 **作者**: Claude（首席架构师）
-**状态**: 设计稿 v0.2.1（修订稿；Hermes 组长复核意见 + Claude 设计审查 findings 已并入，4 条终审 WARN 已补完，待组长终审 commit 推上 origin/master）
+**状态**: 设计稿 v0.2.2（v0.2 修订稿终稿；Hermes 组长复核意见 + Claude 设计审查 11 条 findings + 组长终审 4 条 WARN 全部并入，M1 排期门槛 = 本稿终审 commit 进 origin/master）
 **前置基线**: `83fda71`（Phase 3 P1 全部交付 + `docs/phase4-plan.md` v0.1 首次落盘）
 
 > 本计划对应 STATUS.md 待办表中 P4 两行：
@@ -95,16 +95,15 @@ CREATE INDEX idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
 - 积分单价与 `ModelRoute.estimated_cost` 联动：`estimated_tokens` 超阈值（HEAVY 默认 32K）时按 1.5× 系数。`estimated_cost`/`estimated_tokens` 字段在 `model_router.py` 已有、当前无消费点，本阶段正好接上。
 - 余额 < 所需积分 → **预扣失败即 402**（新增 `code=insufficient_credits`，与 429 区分：429 是限流、402 是没钱）。
 
-### 3.3 429 / 402 统一响应 schema（本阶段定稿，**并存**过渡 MVP 嵌套结构）
+### 3.3 429 / 402 统一响应 schema（本阶段定稿，单一形态：平铺顶层 `code`）
 
-**v0.2 修订（对应 findings #4 / #3）**：v0.1 措辞「取代 MVP 嵌套结构」与正文「保留兼容」自相矛盾——同一响应体不可能既「取代」又「保留」；且 `raise HTTPException(status_code=429, detail={...})` 只能产出 `{"detail": {...}}`（嵌套结构），**平铺顶层 `code` 需要不同的响应机制**，v0.1 未说明机制。v0.2 定稿如下：
+**v0.2 修订稿终稿确认（对应 findings #3/#4 裁定）**：v0.1 措辞「取代 MVP 嵌套结构」与正文「保留兼容」自相矛盾——同一响应体不可能既「取代」又「保留」；且 `raise HTTPException(status_code=429, detail={...})` 只能产出 `{"detail": {...}}`（嵌套结构），**平铺顶层 `code` 需要不同的响应机制**。v0.2 按组长裁定定稿如下——**§3.3 的 schema 定稿只保留一种（平铺顶层 `code`），嵌套 `detail` 形态仅存在于 M1 切换前 `generation.py:677-684` 现状代码中，不进本节 schema 定稿**；本节定稿的平铺 schema 即 G1 切换后 M1/M2 落地的唯一目标形态，过渡兼容段（嵌套结构并存）删除，避免实施侧二义：
 
-- **响应机制**：统一 schema 的响应不走 `HTTPException(detail=...)`，改用 `JSONResponse(status_code=429/402, content={...})` 直接返回平铺顶层 `code`；或挂全局异常处理器统一转换。MVP 期间保留 `HTTPException` 嵌套结构作过渡（`generation.py:677-684` 现状不动），过渡窗口内**同一端点两种形态并存**：旧 429 走嵌套 `detail`（`error=daily_free_quota_exceeded`），新 402/429（积分制切换后）走平铺顶层 `code`。
+- **响应机制**：统一 schema 的响应不走 `HTTPException(detail=...)`，改用 `JSONResponse(status_code=429/402, content={...})` 直接返回平铺顶层 `code`；或挂全局异常处理器统一转换。**M1 切换动作即把 `generation.py:677-684` 的 `HTTPException` 429 分支替换为 `JSONResponse` 平铺形态**，切换完成后旧嵌套 `detail` 形态下线，不再有「同一端点两种形态并存」的过渡兼容段；proxy 透传规则相应简化——M1 切换后 402/429 响应体一律平铺顶层 `code`，proxy 只在「状态码 ∈ {402,429} 且 body 顶层含 `code` 字段」时原样透传，不再解析 `body.detail`。
 - **稳态 429 触发路径**：§3.1 说旧 10 次硬限降级为「告警日志（不再 429）」，v0.2 补一条**唯一保留的 429 路径**——积分制切换后，「当日免费额度（`FREE_DAILY_LIMIT` 折算的积分额度）耗尽且余额 = 0」仍发 429（`code=daily_free_quota_exceeded`），与 402（`code=insufficient_credits`，余额 < 所需且当日免费额度已耗尽）区分：429 = 免费额度耗尽（等次日重置或充值解锁），402 = 余额不足（充值解锁）。稳态下 429 有且仅有这一条触发路径，v0.1 的「429 统一 schema」验收措辞保留但限定在此路径内。
-- **schema 定稿（两种形态）**：
+- **schema 定稿（唯一形态，平铺顶层 `code`）**：
 
 ```json
-// 平铺顶层 code（新，Phase 4 切换后 / 402 或 429 唯一保留路径）
 {
   "code": "insufficient_credits",   // 或 "daily_free_quota_exceeded"
   "message": "积分不足（余额 3 / 需 5），请充值或明日免费额度重置后再试",
@@ -112,17 +111,16 @@ CREATE INDEX idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
   "usage": { "used": 10, "limit": 10, "reset_at": "2026-09-15T00:00:00Z" },   // 仅 429 出现
   "credits": { "balance": 3, "required": 5 }   // 仅 402 出现
 }
-
-// 嵌套 detail（MVP 过渡期保留，`generation.py:677-684` 现状）
-{ "detail": { "error": "daily_free_quota_exceeded", "message": "…", "user_id": "…", "used": 10, "limit": 10, "reset_at": "…" } }
 ```
 
+> **M1 切换前现状锚定**：`generation.py:677-684` 现走 `HTTPException` 嵌套 `detail` 结构（`error=daily_free_quota_exceeded`），该形态仅存在于 M1 切换前的过渡窗口内，作为代码现状描述供实施侧参考，**不进本节 schema 定稿**。
+
 - **proxy 层（`next.config.ts`）透传规则**（与 Codex 拍板的「MVP 不加」对齐——MVP 不解析，本阶段在 proxy 加最小解析）：
-  1. 仅当上游状态码 ∈ {402, 429} 且 body 顶层或 `body.detail` 含 `code`/`error` 字段时，原样透传整个 body（不做结构转换，MVP 嵌套结构与平铺结构都透传）；
+  1. 仅当上游状态码 ∈ {402, 429} 且 body 顶层或 `body.detail` 含 `code`/`error` 字段时，原样透传整个 body（不做结构转换；M1 切换前过渡窗口内嵌套结构与平铺结构都会出现，切换完成后统一为平铺）；
   2. 其余 4xx/5xx 一律原样透传（现状行为不变）；
   3. 前端 `api.ts` 统一拦截：`code`/`detail.error` ∈ {`daily_free_quota_exceeded`} → 配额面板展示 `usage.reset_at` 倒计时 + 「升级积分」CTA；`code=insufficient_credits` → 展示 `credits.balance/required` + 充值入口。
 
-**M1 开工前前置动作（v0.2 新增，对应 findings #3/#4 对 E2E 基线的影响）**：切换判定源（旧 429 → 新 402 或新 429 唯一路径）前，须先与 Hermes 同步 E2E 基线 11 连发（10×200 + 1×429）的判定源更新口径——基线断言的是「状态码 = 429」还是「`detail.error=daily_free_quota_exceeded`」需三方（Hermes/Codex/我）各核一次 `docs/e2e-baseline-report.md` 与 `docs/collab-mvp-report.md` 的 429 路径验证节，确认断言粒度后再定 M1 是否需要同步改基线断言（若基线只断言状态码 429，则 M1 切换后 429 路径保留（唯一路径），基线不需改；若断言了嵌套 `detail` 结构，则需同步更新，随 M1 PR 一起推）。
+**M1 开工前前置动作（v0.2 新增，对应 findings #3/#4 对 E2E 基线的影响；Codex 已独立核认，Hermes 终审 NIT① 确认）**：切换判定源（旧 429 → 新 402 或新 429 唯一路径）前，E2E 基线 11 连发（10×200 + 1×429）的断言粒度已三方核认（Hermes/Codex/Claude 一致）——`e2e-baseline-report.md`「429 免费额度路径验证」节 + `collab-mvp-report.md`「429 路径验证节」均只断言「状态码 = 429 + `message`/`error` 字段存在」，**未断言嵌套 `detail` 结构本身**；且 `e2e/` 目录 grep `429` 零命中（11 连发验证是报告层操作记录，非 e2e 用例断言）→ M1 切换后稳态 429 唯一路径保留，基线不需改断言；M1 PR 仅需同步改 `reset_at` 值（UTC ISO 格式，随 P1-#7 一起推），不需同步改嵌套 `detail` 结构断言（与 §五 R1 同 PR 完成，不得分叉）。
 
 ### 3.4 前端配额面板
 
@@ -151,11 +149,11 @@ CREATE INDEX idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
 ### 4.2 `Last-Event-ID` 断点续传
 
 1. 客户端重连时带 `Last-Event-ID: N`（浏览器 `EventSource` 自动带，自定义 SSE 需手动）；
-2. 服务端从会话事件缓冲（现状 `generation.py:35-50` 为 `list + append + pop(0)` FIFO，非 deque，容量 100）取 `id > N` 的帧回放；**缓冲外则降级为全量 `snapshot` 重发——此时 `generation_progress` 进度帧不可回放（现状 snapshot 不含进度状态，见 §4.2.3），前端需容忍进度条重置；若需保留进度上下文，须将当前进度（`current_stage`/`current_slide`/`percent`）写入 snapshot payload，由 M3 评审拍板 A 案时补上（B 案则明确「进度不可回放」边界）**；
+2. 服务端从会话事件缓冲（现状 `generation.py:35-50` 为 `list + append + pop(0)` FIFO，非 deque，容量 100）取 `id > N` 的帧回放；**缓冲外则降级为全量 `snapshot` 重发——此时 `generation_progress` 进度帧不可回放（现状 snapshot 不含进度状态，边界声明见下行第 3 条），前端需容忍进度条重置；若需保留进度上下文，须将当前进度（`current_stage`/`current_slide`/`percent`）写入 snapshot payload，由 M3 评审拍板 A 案时补上（B 案则明确「进度不可回放」边界）**；
 3. **进度帧可回放边界（v0.2 修订，对应 findings #9）**：v0.1 未界定 `snapshot` 是否含 `generation_progress`——实测 `_collab_snapshot()`（`generation.py:55-63`）只含 `mode/slides_count`，不含进度帧。v0.2 定稿两条边界：
    - **A 案（推荐）**：`snapshot` 增补当前进度帧（`stage`/`currentSlide`/`percent`），使降级重发可恢复进度上下文；缓冲外的漏收进度帧统一收敛到 snapshot 重发，不做「逐帧补发」（逐帧补发与「缓冲外」语义矛盾）。
    - **B 案**：明确「进度不可回放」边界——`generation_progress` 是瞬态通知帧，缓冲外漏收即丢，客户端靠 `generation_complete` 终态帧兜底渲染；snapshot 不含进度帧。
-   两案二选一在 M3 评审时拍板（我侧倾向 A，成本约 +10 行，用户体验更完整）；无论选 A 或 B，`slide_update`/`generation_complete` 属持久帧，必须走 `event_id` 断点续传回放，不受此边界影响。
+   两案二选一在 M3 评审时拍板（我侧倾向 A，成本约 +10 行，用户体验更完整）；**A 案未拍板前，M3 内实施默认按 B 案语义执行**——即缓冲外降级 snapshot 重发时进度帧不可回放，前端容忍进度条重置；M3 评审若拍板 A，则 snapshot payload 增补 `current_stage`/`current_slide`/`percent` 字段，降级重发可恢复进度上下文。无论选 A 或 B，`slide_update`/`generation_complete` 属持久帧，必须走 `event_id` 断点续传回放，不受此边界影响。
 4. 鉴权（v0.2 修订，对应 findings #6）：MVP 依赖 `session_id` 透传（无鉴权，已知风险）；本阶段加 **session-lifetime token**——token 在会话**创建时**生成（非「随每次 `snapshot` 下发」，v0.1 措辞有误：`generation.py:88` snapshot 每次 join 重发，新连接每次 join 都会重发 snapshot，若 token 绑定在 snapshot 上则「一次性」与「后续帧逐帧校验」互斥），存内存（`_collab_tokens: Dict[session_id, token]`），`Last-Event-ID` 重连时校验该 token 是否属于该 session；token 生命周期 = 会话生命周期（会话结束/超时清理时失效），**非**一次性。
 5. 出口验收：断网 30s → 恢复后事件无重复无丢失（回放去重指纹 `(event_id)` 替代现状 `(stage, pages, detail)`，`useCollabStream.ts:118`）。
 
@@ -193,10 +191,10 @@ CREATE INDEX idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
 - **R6 `quota/status` oracle（v0.2 新增，对应 findings #2）**：v0.1 §3.4 写的 `GET /api/quota/status?user_id=...` 在无鉴权下可枚举任意 user_id 读余额 + 流水 5 条 = 敏感数据 oracle。v0.2 对策：§3.4 已改为「端点不接受任意 `user_id` 查询参数，只查当前会话指纹对应账户，跨 user_id 查询一律 404」。登录体系立项后升级为 session-bound 鉴权。
 
 **P1 修复节（v0.2 新增，对应 findings #7 / #8 / #9 / #10，M1 开工前须随本文件一起推上）**:
-- **P1-#7 时区错配（真 bug，现状即存在）**：`quota.py:15-18` `_today_start_utc()` 按 UTC 零点截断日窗；`generation.py:674-675` `reset_at` 用 `datetime.now()`（本地时区，无时区对象）次日 0 点计算，注释「与 quota 重置口径一致」是错的（UTC+8 下偏差 8h，UI 倒计时到点仍 429）。**修复方案（≤5 行，M1 开工前顺手修，与 doc 缺陷一起修掉）**：
+- **P1-#7 时区错配（真 bug，现状即存在）**：`quota.py:15-18` `_today_start_utc()` 按 UTC 零点截断日窗（口径正确）；`generation.py:674-675` `reset_at` 用 `datetime.now()`（本地时区，无时区对象）次日 0 点计算，注释「与 quota 重置口径一致」是错的（UTC+8 下偏差 8h，UI 倒计时到点仍 429）。**修复方案（≤5 行，M1 开工前顺手修，随 v0.2 终审 commit 一起推，不单独起提交）**：
   1. `generation.py:674-675` 改为 `now = datetime.now(timezone.utc)`，`reset_at` 按 UTC 次日 0 点计算，`strftime("%Y-%m-%dT%H:%M:%SZ")`；
   2. `generation.py:674` 注释勘误为「与 quota 重置口径一致（均按 UTC 零点）」；
-  3. 不动 `quota.py`（其口径本就正确，bug 在 `generation.py` 误用本地时区）。
+  3. 不动 `quota.py`（其口径本就正确，bug 在 `generation.py` 误用本地时区——若实施侧按组长裁定误改 `quota.py`，会破坏日窗截断语义，须以本节勘误定位为准）。
   改动不影响 E2E 基线 429 连发路径（不跨 UTC 边界），须与 §一 验收标准#5「时区口径统一」的同一窗口内验证一次。
 - **P1-#8 `slide_update` 生产端改挂 G4**：见 §4.1 修订（`checkpoints.py` 无 slide 编辑端点，`slide_update` 生产端改挂 G4 WebSocket 编辑路由，M3 内只定 schema + 客户端预留 type）。
 - **P1-#9 snapshot 增补进度帧或明确边界**：见 §4.2 修订（A/B 案二选一，M3 评审拍板，我侧倾向 A）。
@@ -217,3 +215,4 @@ CREATE INDEX idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
 | v0.1 | 2026-09-14 | 初稿（Claude）：基于 `7ff2dce` 基线实测现状锚点撰写；429 响应体口径与 `72cf9cc` 勘误记录对齐 |
 | v0.2 | 2026-09-14 | 修订稿（Claude）：并入 Hermes 组长复核意见（9 条成立 / 2 条部分成立判定）+ Claude 设计审查 findings 11 条（P0 6 条 + P1 4 条 + P2 1 条）。变更点：§一 验收标准#1 删「注册赠 N 积分」；§二 新增时区错配 bug 行；§3.1 迁移顺序去赠额 + `daily_cost` 增 `last_cost_date`；§3.3 定稿 429/402 并存 schema + 唯一 429 路径 + JSONResponse 机制 + M1 前置基线断言粒度确认；§3.4 `quota/status` 鉴权规则（禁跨 user_id 枚举）；§4.1 `generation_complete` 改非暂停态终态 + `slide_update` 改挂 G4；§4.2 进度帧可回放边界（A/B 案）+ session-lifetime token；§4.4 `CollabStatusPanel` success 态渲染勘误；§五 新增 R5/R6 + P1 修复节（#7 时区 / #8 / #9 / #10） |
 | v0.2.1 | 2026-09-14 | 终审补完（Claude）：按 Hermes 组长终审 4 条 WARN 补齐——#6 §4.2.4 token 语义改 session-lifetime（会话创建时生成，多用途，非「一次性」）；#9 §4.2.2 加「缓冲外降级 snapshot 时进度帧不可回放」边界声明（A 案未拍板前默认 B 案语义，M3 拍板 A 则 snapshot payload 增补 `current_stage`/`current_slide`）；#10 §3.1 DDL 补 `last_cost_date DATE NOT NULL DEFAULT '1970-01-01'` 列；#12 §3.1 DDL 补 `version INTEGER NOT NULL DEFAULT 0` 乐观锁列 + M2 扣减 SQL `WHERE version=?` 原子更新口径。对应 Codex 补充 findings #12/#13（#13 已有 `idx_credit_ledger_user_time` 索引无需另开） |
+| v0.2.2 | 2026-09-14 | 组长终审意见（Hermes）11 条 findings 判定 + M1 排期门槛裁定后，v0.2 修订稿终稿定稿（Claude）——§3.3 429/402 定稿 schema 收敛为唯一形态（平铺顶层 `code`），删除「MVP 过渡期嵌套结构并存」兼容段（对应组长裁定 #4）；§3.3 稳态 429 唯一路径锁定为「免费额度耗尽且余额=0」（#3）；P1-#7 时区修复方案明确不动 `quota.py`、只改 `generation.py:674-675`，随终审 commit 一次推上（#7）；STATUS.md L123 背书降调行已随 `2778887` 落盘（#11）。此版为 v0.2 修订稿终稿，待组长终审 commit 推上 origin/master 后 M1 方可排期 |
