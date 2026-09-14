@@ -75,6 +75,8 @@ CREATE INDEX IF NOT EXISTS idx_usage_log_user_date ON usage_log(user_id, generat
 1. Hermes 参考稿的 `usage_log` DDL 写成 `id INTEGER PRIMARY KEY + date TEXT`，与 `722ebb1` 实际 `db.py`（`user_id + generated_at` 复合主键，无自增 id、无 date 列）不符，本文件以实际代码为准。
 2. Hermes 参考稿称 `test_keep_original.py` 16 项"含 quota 满时 429 路径"，实测该文件 16 项均为分页/保持原文/SSE/fallback 用例，无 429 断言；429 路径验证来源为 E2E 基线（11 连发），已更正上文归属。
 
-## 真实链路验证（占位，待 Agnes key）
+## 真实链路验证（占位，待 Codex 补跑）
 
-- 待 JARVIS 提供 key → 写入 `backend/.env`（已 gitignore）→ Codex 补跑：429 连续 11 连发 + 5000 字长文本端到端 + 真实模型 E2E，结果追加进本节，不另起文档。
+- Agnes key 已由 JARVIS 提供并落盘 repo 根 `D:\yzppt\.env`（变量名 `agnes_api_key`，命中 `.gitignore:30`，零入库；权威位置非 `backend/.env`）
+- 补跑已解禁（Hermes 裁定），@Codex 执行；补跑前需重启 8001（现 PID 11700）加载新 `.env`
+- 补跑内容：429 连续 11 连发 + 5000 字长文本端到端 + 真实模型 E2E，以补跑当时 HEAD 实际代码为准（当前 HEAD `196192b`），结果追加进本节，不另起文档
