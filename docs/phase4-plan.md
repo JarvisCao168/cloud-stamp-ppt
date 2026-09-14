@@ -2,7 +2,7 @@
 
 **日期**: 2026-09-14
 **作者**: Claude（首席架构师）
-**状态**: 设计稿 v0.2（修订稿；Hermes 组长复核意见 + Claude 设计审查 findings 已并入，待组长终审）
+**状态**: 设计稿 v0.2.1（修订稿；Hermes 组长复核意见 + Claude 设计审查 findings 已并入，4 条终审 WARN 已补完，待组长终审 commit 推上 origin/master）
 **前置基线**: `83fda71`（Phase 3 P1 全部交付 + `docs/phase4-plan.md` v0.1 首次落盘）
 
 > 本计划对应 STATUS.md 待办表中 P4 两行：
@@ -151,7 +151,7 @@ CREATE INDEX idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
 ### 4.2 `Last-Event-ID` 断点续传
 
 1. 客户端重连时带 `Last-Event-ID: N`（浏览器 `EventSource` 自动带，自定义 SSE 需手动）；
-2. 服务端从会话事件缓冲（现状 `generation.py:35-50` 为 `list + append + pop(0)` FIFO，非 deque，容量 100）取 `id > N` 的帧回放；缓冲外则降级为全量 `snapshot` 重发；
+2. 服务端从会话事件缓冲（现状 `generation.py:35-50` 为 `list + append + pop(0)` FIFO，非 deque，容量 100）取 `id > N` 的帧回放；**缓冲外则降级为全量 `snapshot` 重发——此时 `generation_progress` 进度帧不可回放（现状 snapshot 不含进度状态，见 §4.2.3），前端需容忍进度条重置；若需保留进度上下文，须将当前进度（`current_stage`/`current_slide`/`percent`）写入 snapshot payload，由 M3 评审拍板 A 案时补上（B 案则明确「进度不可回放」边界）**；
 3. **进度帧可回放边界（v0.2 修订，对应 findings #9）**：v0.1 未界定 `snapshot` 是否含 `generation_progress`——实测 `_collab_snapshot()`（`generation.py:55-63`）只含 `mode/slides_count`，不含进度帧。v0.2 定稿两条边界：
    - **A 案（推荐）**：`snapshot` 增补当前进度帧（`stage`/`currentSlide`/`percent`），使降级重发可恢复进度上下文；缓冲外的漏收进度帧统一收敛到 snapshot 重发，不做「逐帧补发」（逐帧补发与「缓冲外」语义矛盾）。
    - **B 案**：明确「进度不可回放」边界——`generation_progress` 是瞬态通知帧，缓冲外漏收即丢，客户端靠 `generation_complete` 终态帧兜底渲染；snapshot 不含进度帧。
