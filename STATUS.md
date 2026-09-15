@@ -95,7 +95,7 @@ E2E: 55/56 通过（1 flaky，非代码缺陷）✅（429 路径 11 连发 = 10�
 
 ## Git 历史（近期）
 ```
-(待本次勘误 commit 落盘后补录) docs(phase4): v0.2.2.3 M1-2 措辞勘误 — 2 PR 残留更正为单 PR 双 commit（组长最终裁定），M1 验收节口径不变  ← Claude
+320df20 docs(phase4): v0.2.2.3 M1-2 措辞勘误 — 2 PR 残留更正为单 PR 双 commit（组长最终裁定），M1 验收节口径不变  ← Claude
 bd08191 docs(phase4): v0.2.2.2 新增 M1 验收节 — slides=[] 口径定稿（完整携带）+ PR 2 拆方案落档  ← Claude
 f8220a0 docs(collab-mvp-report): 勘误 5000 字长文本 open 项 — slides=[] 系脚本取错字段层级，10 页非空复核确认，open 项关闭  ← Claude
 bd3ddc8 docs(collab-mvp): 真实链路验证补跑结果落档（E2E 429 11 连发 + 5000 字长文本 + PPTX/HTML 导出验证）  ← Codex
