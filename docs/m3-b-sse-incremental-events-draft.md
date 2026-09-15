@@ -1,12 +1,14 @@
-# M3 · B 案 SSE 增量事件协议草案（v0.1 草案稿）
+# M3 · B 案 SSE 增量事件协议草案（v0.2 定稿）
 
-**日期**: 2026-09-16
+**日期**: 2026-09-16（v0.1 草案）｜2026-09-16（v0.2 定稿，@Hermes 终审核对后修正落稿，同 commit 随组落库）
 **作者**: Claude（协议侧，按 M3 启动令 A+B 裁定第 3 步交付）
-**状态**: 草案 v0.1（M3 交付物，零代码变更；B 落码在 M4；待 @Hermes 终审收口）
+**状态**: 定稿 v0.2（M3 交付物，零代码变更；B 落码在 M4；v0.2 已按 @Hermes 终审核对意见修正 6 处行号引用，修正全量登记见 §八）
 **裁定记录**: M3 范围裁定 **A+B**（@JARVIS 2026-09-16 下达，@Hermes 启动令 4 步序列第 3 步）
 **基座**: `098cde9`（不动）｜工作树 HEAD `bcd202c`（M2 全链，零分叉）｜交付性质：**纯文档**，M3 内不改任何生产代码
 
 > 本草案为 B 线（SSE 增量事件协议定稿）唯一设计基准，随 M3 收口 commit 与 `docs/phase4-plan.md` v0.2.4 增补登记一并落库。M4 协作编辑流按本稿定稿协议直接落码，不再追加协议设计轮次。
+>
+> **文件路径注记**：本稿独立文件为 `docs/m3-b-sse-incremental-events-draft.md`；并入 `docs/phase4-plan.md` 的章节编号为 **§4·B**（v0.2.4 新增），与 §4.1-4.4 既有锁定内容零重叠。
 
 ---
 
@@ -51,22 +53,24 @@ B 案 3 个新增事件使用**独立 `event` 命名空间**，不复用 `genera
 
 ## 三、分发点清单（M4 落码验收项，逐条列明）
 
+**路径注记**：后端路径全量使用完整路径（HEAD `bcd202c` 实测）。`generation.py` 全路径 = `backend/app/api/routes/generation.py`；`useCollabStream.ts` 全路径 = `app/components/collab/useCollabStream.ts`。
+
 现状锚点：`app/components/collab/useCollabStream.ts`（协作 MVP 前端骨架，文件级隔离约定）。
 
 | # | 位置 | M4 改动 | 说明 |
 |---|------|---------|------|
-| D1 | `useCollabStream.ts:23-39` `CollabEvent` 联合类型 | **新增 3 个成员**：`{type:"viewer_joined", data:{session_id, viewer_id, ts, viewers_total}}` / `{type:"viewer_left", data:{session_id, viewer_id, ts, viewers_total}}` / `{type:"presence_snapshot", data:{session_id, viewers, ts}}` | 既有 4 成员零改动（schema 冻结）；新成员类型即本稿 §一 schema |
-| D2 | `useCollabStream.ts:41-50` `CollabStreamState` 接口 | **新增 2 字段**：`viewersTotal: number \| null`（最近一次 `viewer_joined`/`viewer_left`/`presence_snapshot` 的上报值，全缺失 = `null` → 面板「未上报」降级）、`lastPresenceTs: number \| null` | 既有字段零改动 |
-| D3 | `useCollabStream.ts:111-136` `onEvent` 分发闭包 | **新增 3 个分发分支**（`type==="viewer_joined"` / `"viewer_left"` / `"presence_snapshot"`），各分支仅写 `viewersTotal` / `lastPresenceTs`，**不复用** `processedProgressRef` 去重指纹（该指纹仅服务 `generation_progress` 回放去重，presence 增量事件天然按 viewer 维度幂等） | 既有 `generation_progress` / `collab_status` / `ping` 分支零改动 |
-| D4 | `useCollabStream.ts:138-141` `es.addEventListener` 注册块 | **新增 3 行监听器注册**：`es.addEventListener("viewer_joined", onEvent("viewer_joined"))` 等 | 既有 4 行注册零改动 |
-| D5 | `useCollabStream.ts:9` 头注释协议表 | 同步追加 3 事件行（文档行，与 STATUS.md SSE 事件协议表同批更新） | 纯注释，不影响运行时 |
+| D1 | `app/components/collab/useCollabStream.ts:23-39` `CollabEvent` 联合类型 | **新增 3 个成员**：`{type:"viewer_joined", data:{session_id, viewer_id, ts, viewers_total}}` / `{type:"viewer_left", data:{session_id, viewer_id, ts, viewers_total}}` / `{type:"presence_snapshot", data:{session_id, viewers, ts}}` | 既有 4 成员零改动（schema 冻结）；新成员类型即本稿 §一 schema |
+| D2 | `app/components/collab/useCollabStream.ts:41-50` `CollabStreamState` 接口 | **新增 2 字段**：`viewersTotal: number \| null`（最近一次 `viewer_joined`/`viewer_left`/`presence_snapshot` 的上报值，全缺失 = `null` → 面板「未上报」降级）、`lastPresenceTs: number \| null` | 既有字段零改动 |
+| D3 | `app/components/collab/useCollabStream.ts:111-136` `onEvent` 分发闭包 | **新增 3 个分发分支**（`type==="viewer_joined"` / `"viewer_left"` / `"presence_snapshot"`），各分支仅写 `viewersTotal` / `lastPresenceTs`，**不复用** `processedProgressRef` 去重指纹（该指纹仅服务 `generation_progress` 回放去重，presence 增量事件天然按 viewer 维度幂等） | 既有 `generation_progress` / `collab_status` / `ping` 分支零改动 |
+| D4 | `app/components/collab/useCollabStream.ts:138-141` `es.addEventListener` 注册块 | **新增 3 行监听器注册**：`es.addEventListener("viewer_joined", onEvent("viewer_joined"))` 等 | 既有 4 行注册零改动 |
+| D5 | `app/components/collab/useCollabStream.ts:9` 头注释协议表 | 同步追加 3 事件行（文档行，与 STATUS.md SSE 事件协议表同批更新） | 纯注释，不影响运行时 |
 
 **后端分发点（M4 生产端接入位置，本稿仅登记不落码）**：
 
 | # | 位置 | 说明 |
 |---|------|------|
-| S1 | `generation.py:53` `collab_publish()` 广播总线 | 新增 `viewer_joined` / `viewer_left` / `presence_snapshot` 3 类事件写入 `_collab_event_log`（容量 100 条不变）；join 回放路径（`generation.py:94-102`）天然覆盖 `presence_snapshot` 全量下发，**无需新增回放通道** |
-| S2 | `generation.py:89-113` `event_stream()` 订阅端 | 新增 per-connection 连接簿记（连接建立 → `collab_publish(viewer_joined)`；`Queue` 关闭 / 30s 心跳超时 → `collab_publish(viewer_left)`；新 join 完成回放后首帧 → `collab_publish(presence_snapshot)`） |
+| S1 | `backend/app/api/routes/generation.py:53-58` `collab_publish()` 广播总线（HEAD `bcd202c` 实测，v0.1 稿误引 `:45-53` 已修正） | 新增 `viewer_joined` / `viewer_left` / `presence_snapshot` 3 类事件写入 `_collab_event_log`（容量 100 条不变）；join 回放路径（`backend/app/api/routes/generation.py:93-95`，v0.1 稿误引 `:94-102` 已修正）天然覆盖 `presence_snapshot` 全量下发，**无需新增回放通道** |
+| S2 | `backend/app/api/routes/generation.py:89-113` `event_stream()` 订阅端 | 新增 per-connection 连接簿记（连接建立 → `collab_publish(viewer_joined)`；`Queue` 关闭 / 30s 心跳超时 → `collab_publish(viewer_left)`；新 join 完成回放后首帧 → `collab_publish(presence_snapshot)`） |
 
 > **验收基线**：M4 落码 PR 的 diff 面必须与 D1-D5 + S1-S2 清单一一对应；清单外文件出现 B 相关 diff 即终审打回（与三条收口硬约束同等效力，见 §五 引用）。
 
@@ -78,17 +82,17 @@ B 案 3 个新增事件使用**独立 `event` 命名空间**，不复用 `genera
 
 **接入设计（M4 落码基准，M3 本稿仅锁定位置与口径，不改代码）**：
 
-1. **预扣触发单点**：预扣由**生成方（编辑者）单点触发**，即 `/create` 路由（`generation.py:685` `estimate_required(request.mode, ...)` 调用点）；**观察者不触发任何预扣路径**——观察者连接 SSE 流不产生计费点（本稿 3 个 presence 事件本身 `required=0`，不入 `estimate_required` 折算域）。
-2. **分桶路径实码承载**：`estimate_required` 传 `mode="collaborative"` → 落入既有分桶路径 `if mode in ("collaborative", "full_control"): return 0`（`quota.py:39-40` 实测），**无需新增 `mode` 枚举值**；单测 9 组之 #6（`estimate_required("collaborative", 5000, "auto")` → 0，§3.5.1 路由表 checkpoint 暂停态不计费行）即「整篇计一次」约束的实码承载，M4 协作流 checkpoint 动作计费如需另开，走 §3.5.1 路由表末行「M4 协作流 checkpoint 动作计费单独立项」，不在 B 线范围。
-3. **`debit_credits` 零改动**：B 线不新增扣减调用点、不改 `debit_credits`（`quota.py:57-107` 乐观锁结构，3 次重试 + 50ms 退避 + `(False, -2)` 返回）任何一行——M3 硬约束 ④⑤⑥（见 §五）在 M4 落码时继续生效。
-4. **`usage_log` 计数同源**：协作会话每次 `/create` 生成后由 `record_usage`（`quota.py:296-307`，`generation.py:751` 同步调用点）记一行，当日计数走 `COUNT(*) WHERE user_id=? AND generated_at >= _today_start_utc()` 口径（`quota.py:205/:248/:273` 三处统一，见 `phase4-plan.md` v0.2.4 勘误落档）——与「整篇计一次」同源闭合，B 线不引入第二条计数通道。
+1. **预扣触发单点**：预扣由**生成方（编辑者）单点触发**，即 `/create` 路由（`backend/app/api/routes/generation.py:685` `estimate_required(request.mode, ...)` 调用点，HEAD `bcd202c` 实测）；**观察者不触发任何预扣路径**——观察者连接 SSE 流不产生计费点（本稿 3 个 presence 事件本身 `required=0`，不入 `estimate_required` 折算域）。
+2. **分桶路径实码承载**：`estimate_required` 传 `mode="collaborative"` → 落入既有分桶路径 `if mode in ("collaborative", "full_control"): return 0`（`backend/app/core/quota.py:39-40` 实测），**无需新增 `mode` 枚举值**；单测 9 组之 #6（`test_quota_m2.py:99` `estimate_required("collaborative", 5000, "auto")` → 0）即「整篇计一次」约束的实码承载，M4 协作流 checkpoint 动作计费如需另开，走 §3.5.1 路由表末行「M4 协作流 checkpoint 动作计费单独立项」，不在 B 线范围。
+3. **`debit_credits` 零改动**：B 线不新增扣减调用点、不改 `debit_credits`（`backend/app/core/quota.py:57-107` 乐观锁结构，3 次重试 + 50ms 退避 + `(False, -2)` 返回）任何一行——M3 硬约束 ④⑤⑥（见 §五）在 M4 落码时继续生效。
+4. **`usage_log` 计数同源**：协作会话每次 `/create` 生成后由 `record_usage`（`backend/app/core/quota.py:296-307`，`backend/app/api/routes/generation.py:751` 同步调用点）记一行，当日计数走 `COUNT(*) WHERE user_id=? AND generated_at >= _today_start_utc()` 口径——实码三处（`check_quota` `backend/app/core/quota.py:262-280` 内 `:273` / `check_credits` `:214-259` 内 `:248` / `get_quota_status_sync` `:195-211` 内 `:205`，口径本身三处统一无误）；`since = _today_start_utc()` 定义 = `quota.py:17`；**注：`estimate_required`（`quota.py:23-49`）本身无计数行，不属「三处」之列**（v0.1 稿将 `:273` 误标 `estimate_required` 已勘误，全量登记见 §八）；勘误行号备案 @Hermes 2026-09-16，见 `docs/phase4-plan.md` v0.2.4 勘误落档——与「整篇计一次」同源闭合，B 线不引入第二条计数通道。
 
 ## 五、429 / 402 路径分离标注 + 基座声明 + 收口硬约束
 
 ### 5.1 429 / 402 路径分离（B 线风险清单须标注，@Codex 合并排期并入）
 
-- **429 分支属 `check_quota` 免费额度耗尽路径**（`quota.py:262` 实测）：稳态唯一触发条件 = `used ≥ limit`（当日免费额度耗尽）**且** `balance = 0`，`code=daily_free_quota_exceeded`（§3.3 定稿 schema，`phase4-plan.md` §3.5.4 四态表 429 行）；
-- **402 属 `check_credits` 积分余额不足路径**（`quota.py:214` 实测）：`used ≥ limit` 且 `0 ≤ balance < required`，`code=insufficient_credits`；503 属 `debit_credits` 版本冲突 3 次（`(False, -2)`）；
+- **429 分支属 `check_quota` 免费额度耗尽路径**（`backend/app/core/quota.py:262` 函数起点实测）：稳态唯一触发条件 = `used ≥ limit`（当日免费额度耗尽）**且** `balance = 0`，`code=daily_free_quota_exceeded`（§3.3 定稿 schema，`phase4-plan.md` §3.5.4 四态表 429 行）；
+- **402 属 `check_credits` 积分余额不足路径**（`backend/app/core/quota.py:214` 函数起点实测）：`used ≥ limit` 且 `0 ≤ balance < required`，`code=insufficient_credits`；503 属 `debit_credits` 版本冲突 3 次（`(False, -2)`）；
 - B 线 presence 事件（`required=0`，不入计费折算域）**不经 429/402 拦截域**——M4 落码若观察到 presence 事件关联 4xx/429 响应，按 bug 路径排查（定位是否误入 `/create` 计费域），不回改协议；
 - 两条路径的响应 schema 平铺顶层 `code` 形态（§3.3 定稿）M4 内零改动。
 
@@ -98,11 +102,11 @@ B 案 3 个新增事件使用**独立 `event` 命名空间**，不复用 `genera
 
 ### 5.3 三条收口硬约束（M3 验收项，触碰即打回）
 
-1. `usage_log` 复合主键 `(user_id, generated_at)`（`db.py:55-61`）+ 同名索引 `idx_usage_log_user_date` 保留 git 跟踪；
-2. `config.py` 绝对路径锚定（完整路径勘误：`backend/app/core/config.py:12-15` / `:18-27` / `:75-76`，非台账历史措辞的 `backend/app/config.py`）；
-3. NIT 拦截式判定式（`generation.py:688` 注释 + `quota.py:227` 落码说明，§3.5.3 定稿版）。
+1. `usage_log` 复合主键 `(user_id, generated_at)`（`backend/app/db.py:55-61`，`:59` 复合主键 + `:61` 索引 `idx_usage_log_user_date` 保留 git 跟踪）；
+2. `config.py` 绝对路径锚定（完整路径勘误：`backend/app/core/config.py`（`:12` `_PROJECT_ROOT` / `:15` `_DB_PATH` / `:18-27` `_anchor_db_url` / `:75-76` 收尾锚定，HEAD `bcd202c` 实测），非台账历史措辞的 `backend/app/config.py`）；
+3. NIT 拦截式判定式（`backend/app/api/routes/generation.py:688` 注释 + `backend/app/core/quota.py:227` 落码说明，§3.5.3 定稿版）。
 
-> 另 M3 启动令追加硬约束 ④ `quota.py:23` `estimate_required` 签名零改动 / ⑤ `quota.py:57-107` `debit_credits` 乐观锁结构零改动 / ⑥ `record_usage`（`quota.py:296-307`）`INSERT OR REPLACE` 语句不改动 / ⑦ 基座 `098cde9` 不动——本稿 §三验收基线对 7 条全量收录。
+> 另 M3 启动令追加硬约束 ④ `backend/app/core/quota.py:23` `estimate_required` 签名零改动 / ⑤ `backend/app/core/quota.py:57-107` `debit_credits` 乐观锁结构零改动 / ⑥ `record_usage`（`backend/app/core/quota.py:296-307`）`INSERT OR REPLACE` 语句不改动 / ⑦ 基座 `098cde9` 不动——本稿 §三验收基线对 7 条全量收录。
 
 ## 六、M4 衔接（落码前复核项，防二次三方对齐）
 
