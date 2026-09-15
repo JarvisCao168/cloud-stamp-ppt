@@ -26,6 +26,9 @@ coverage/
 test-results/
 playwright-report/
 
+# Working scratch directory
+.tmp/
+
 # Environment
 .env
 .env.local
