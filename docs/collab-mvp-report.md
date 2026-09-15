@@ -75,8 +75,39 @@ CREATE INDEX IF NOT EXISTS idx_usage_log_user_date ON usage_log(user_id, generat
 1. Hermes 参考稿的 `usage_log` DDL 写成 `id INTEGER PRIMARY KEY + date TEXT`，与 `722ebb1` 实际 `db.py`（`user_id + generated_at` 复合主键，无自增 id、无 date 列）不符，本文件以实际代码为准。
 2. Hermes 参考稿称 `test_keep_original.py` 16 项"含 quota 满时 429 路径"，实测该文件 16 项均为分页/保持原文/SSE/fallback 用例，无 429 断言；429 路径验证来源为 E2E 基线（11 连发），已更正上文归属。
 
-## 真实链路验证（占位，待 Codex 补跑）
+## 真实链路验证（Codex 补跑结果，2026-09-15）
 
-- Agnes key 已由 JARVIS 提供并落盘 repo 根 `D:\yzppt\.env`（变量名 `agnes_api_key`，命中 `.gitignore:30`，零入库；权威位置非 `backend/.env`）
-- 补跑已解禁（Hermes 裁定），@Codex 执行；补跑前需重启 8001（现 PID 11700）加载新 `.env`
-- 补跑内容：429 连续 11 连发 + 5000 字长文本端到端 + 真实模型 E2E，以补跑当时 HEAD 实际代码为准（当前 HEAD `196192b`），结果追加进本节，不另起文档
+- 补跑时间：北京时间 2026-09-15 10:45–10:48（UTC 2026-09-15 02:45–02:48，**不在** UTC 日界 ±1h 窗口内，v0.2.2.1 前置断言 #7 满足）
+- HEAD 基线：`ccf9d9f`（origin/master）
+- 8001 状态：PID 12788，启动 2026-09-15 00:43:03，晚于 `.env` 写入 00:37:54，key 已拾取
+- 环境变量口径勘误（相对占位节旧文）：`.env` 变量名实测为 **`AGNES_API_KEY`（大写）**，与 `config.py` 读取字段一致；非旧文所记小写 `agnes_api_key`
+
+### 1. 429 连发基线（user_id `codex-429-v2`，`quick` 模式）
+
+| 调用 | 结果 | 耗时 |
+|---|---|---|
+| 1 | 200，完整 `data.slides`（3页） | 9448 ms |
+| 2–10 | 200 | 5115–6288 ms（单次最大 13972 ms） |
+| 11 | **429** | 2041 ms |
+| 12（复验） | **429** | 2058 ms |
+
+- 429 响应体（顶层 `detail` 平铺，符合 v0.2.2 G2 单一平铺形态）：
+```json
+{"detail":{"error":"daily_free_quota_exceeded","message":"今日免费额度已用完（10/10），请明天再试","user_id":"codex-429-v2","used":10,"limit":10,"reset_at":"2026-09-16 00:00:00"}}
+```
+- `usage_log` 实测：`codex-429-v2` 当日 10 行，第 11 次起 429 短路（不生成、不记账）✅
+- 中间探测（user_id `codex-d-429`）独立复现 10×200 + 1×429 口径，`usage_log` 10 行封顶，两次独立验证一致
+
+### 2. 5000 字长文本真实链路（user_id `codex-5000-char`，5200 字输入）
+
+- 结果：200，`status=completed`，单次 6055–8969 ms（真实 LLM 调用量级，非 mock <1s）
+- **Open 项**：响应 `data.slides` 为 `[]`、`numbering_style` 为 `null`——长文本进入大纲/分页管线但 `/create` 同步响应未产出 slides 结构；同 session 走 `POST /api/export/pptx` 可正常导出（`slide_count=3`，200）。疑似分页引擎对超长单段输入在同步响应内的回退路径，非 429/500 故障，建议 M1 前由 @Claude 确认口径
+- 导出验证：`POST /api/export/pptx` 200（`slide_count=3`）；`POST /api/export/html` 200（2123 bytes）
+
+### 3. 真实 LLM 路径确认
+
+- 单次 `/create` 耗时 4–14 s 区间，响应含 `intent`/`outline`/`slides`/`numbering_style` 完整结构 → 命中 Agnes 真实 API，非 fallback
+
+### 复跑脚本（`.tmp` 本地，不入库）
+
+- `run1.py`（首次调用 + 结构打印）/ `run2.py`（第 2–11 连发）/ `e2e5000.py`（长文本）/ `exportpptx.py`（导出验证）
