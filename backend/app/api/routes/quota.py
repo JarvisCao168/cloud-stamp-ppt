@@ -10,8 +10,34 @@ localStorage 指纹 header 链路 X-User-Id or 匿名指纹 anon-{host}），
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+import aiosqlite
+
 from ...core.quota import check_quota, check_credits
-from ...db import init_db
+from ...core.config import settings
+
+# 同步 DDL 常量（与 db.py SCHEMA_SQL 中 user_credits/credit_ledger 逐字一致，幂等）：
+# 路由层不用 init_db()（async，lifespan 已负责建表）；冷启动未走 lifespan 时，
+# 用 aiosqlite 直连执行本 DDL，避免同步调用 async init_db() 产生的
+# "coroutine never awaited" RuntimeWarning + 冷启动 user_credits 缺失 500
+_CREDITS_DDL_SQL = """
+CREATE TABLE IF NOT EXISTS user_credits (
+    user_id        TEXT PRIMARY KEY,
+    balance        INTEGER NOT NULL DEFAULT 0,
+    daily_cost     INTEGER NOT NULL DEFAULT 0,
+    last_cost_date DATE     NOT NULL DEFAULT '1970-01-01',
+    version        INTEGER NOT NULL DEFAULT 0,
+    updated_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS credit_ledger (
+    seq            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id        TEXT NOT NULL,
+    delta          INTEGER NOT NULL,
+    reason         TEXT NOT NULL,
+    session_id     TEXT,
+    created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
+"""
 
 router = APIRouter()
 
@@ -34,9 +60,17 @@ async def quota_status(http_request: Request):
     跨 user_id 一律 404 不枚举（不返回 403，不区分「不存在」与「无权」）。
     """
     # 防御性建表（user_credits/credit_ledger，幂等）：
-    # 路由层 init_db() 为同步阻塞点，FastAPI 自动丢进线程池执行，不卡事件循环；
-    # 正常路径下 lifespan 已完成建表，此调用为 no-op
-    init_db()
+    # 正常路径下 lifespan 已完成建表，此调用为 no-op；
+    # 冷启动未走 lifespan 时以同步 DDL 直连保证可查（init_db() 为 async，
+    # 同步调用产生 "coroutine never awaited" RuntimeWarning，此处不走该路径）
+    db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
+    conn = await aiosqlite.connect(db_path)
+    try:
+        await conn.executescript(_CREDITS_DDL_SQL)
+        await conn.commit()
+    finally:
+        await conn.close()
+
     user_id = _resolve_user_id(http_request)
 
     # 可选查询参数 user_id 仅在与调用方自身指纹一致时放行，否则 404（oracle 防护，R6）
