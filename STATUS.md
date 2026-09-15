@@ -1,8 +1,8 @@
 # 云章PPT智能体系统 - 项目状态报告
 
 **更新日期**: 2026-09-15
-**当前阶段**: Phase 4 M1 已合入 origin/master（`ba61f63` 收口）；M2 文档批（`f668144`+`fd5437a`+`752f974` §3.5 完整版）已合入 origin/master；M2 PR 1 代码批次（`a02e8ce`+`6ba0950`，含工程核认 2 条提醒落码 + 单测 12/12 + E2E 402 改判用例）已合入 origin/master HEAD `6ba0950`，Hermes 终审裁定有条件放行（口径 B）；**M2 PR 2 实施完成（`ad0cc35`）+ Hermes 终审复核 5 项勘误/修复落码（`362420f`）：① `estimateCreditsRequired` 补 `complexity` 参数（multimodal=6）对齐后端；② 预扣门控补 `free_allowed` 门控（free 未耗尽时不预扣，修复 200 用例误判 402 回归 bug）；③ `quota/status` `credits.required` 对齐 §3.5.1 LIGHT=1；④ 402 判定式收敛为 `not allowed and 0<balance<required`；⑤ E2E setup-balance 路由勘误（`/api/quota/test/setup-balance`）+ 新增 `pytest.ini` 收口 `test_api.py` 4 项 async 收集失败。回归门槛：后端 48/48（test_quota_m2.py 12/12 + test_api.py 4/4，WSL 实测全绿）+ Vitest 185/185；E2E 402/429 用例需 8001 重启 + Agnes 限流缓解后全量重跑（Hermes 终审复核时 Agnes API 429 限流阻塞真实链路验证，判定逻辑已通过后端 8001 直连实测确认）**
-**最新 Commit**: `93b013b`（STATUS 台账行落档）/ `362420f`（M2 PR 2 终审复核 5 项勘误/修复落码）/ `ad0cc35`（M2 PR 2 实施）/ `6ba0950`（M2 PR 1 收口）/ `a02e8ce`（M2 PR 1 实施）/ `752f974`（M2 §3.5 完整版正式落档）/ `fd5437a`（M2 启动台账行）/ `f668144`（§3.5 初稿，名实不符由 `752f974` 补正）/ `ba61f63`（M1 收口行落档）
+**当前阶段**: M2 完整闭环 ✅（origin/master `b369e1f`，零分叉）：M2 PR 1 代码批次（`a02e8ce`+`6ba0950`，含工程核认 2 条提醒落码 + 单测 12/12 + E2E 402 改判用例）+ M2 PR 2 前端批次（`ad0cc35` 实施 + `362420f` 终审复核 5 项勘误/修复：① `estimateCreditsRequired` 补 `complexity` 参数（multimodal=6）对齐后端；② 预扣门控补 `free_allowed` 门控（free 未耗尽时不预扣，修复 200 用例误判 402 回归 bug）；③ `quota/status` `credits.required` 对齐 §3.5.1 LIGHT=1；④ 402 判定式收敛为 `not allowed and 0<balance<required`；⑤ E2E setup-balance 路由勘误（`/api/quota/test/setup-balance`）+ 新增 `pytest.ini` 收口 `test_api.py` 4 项 async 收集失败）+ cleanup 批次 #1 核销（`b369e1f`）全部落库。回归三项全绿：后端 48/48 + Vitest 185/185（含 creditPanel.test.ts 12 项）+ E2E 56/56（402 用例命中确认）。Hermes 终审裁定：PR 1 有条件放行（口径 B）→ 复核后 PR 2 无条件放行 → M2 完整闭环收口（seq 18）。cleanup #2（E2E 402 命中重跑）非阻塞挂 Codex 台账
+**最新 Commit**: `b369e1f`（cleanup #1 落码——estimate_required 签名三方偏差核销）/ `cec8972`（STATUS.md BOM 修复 + cleanup 批次台账登记）/ `93b013b`（M2 PR 2 终审复核 5 项台账行落档）/ `362420f`（M2 PR 2 终审复核 5 项勘误/修复落码）/ `ad0cc35`（M2 PR 2 实施）/ `6ba0950`（M2 PR 1 收口）/ `a02e8ce`（M2 PR 1 实施）/ `752f974`（M2 §3.5 完整版正式落档）/ `fd5437a`（M2 启动台账行）/ `f668144`（§3.5 初稿，名实不符由 `752f974` 补正）/ `ba61f63`（M1 收口行落档）
 
 ## 团队配置
 
@@ -187,7 +187,7 @@ fc69cea fix(quota): async check_quota + usage_log schema + /create wiring       
 
 | # | 项 | 状态 | 说明 | 负责人 |
 |---|---|---|---|---|
-| 1 | `estimate_required` 签名三方偏差 | 🟢 已核销 | 勘误项 1（docs `payload_size`→`input_len`）经 grep 实测 §3.5.1 落档时即正确（L159 入参 `(mode, input_len, complexity)`），无偏差无需改；勘误项 2（`routes/quota.py` `required_hint` 注释）已落码 L85「仅 UI 占位，非生成时点实际预扣值」；`c0f6f2a` 落库 | @Claude |
+| 1 | `estimate_required` 签名三方偏差 | 🟢 已核销 | 勘误项 1（docs `payload_size`→`input_len`）经 grep 实测 §3.5.1 落档时即正确（L159 入参 `(mode, input_len, complexity)`），无偏差无需改；勘误项 2（`routes/quota.py` `required_hint` 注释）已落码 L85「仅 UI 占位，非生成时点实际预扣值」；`b369e1f` 落库 | @Claude |
 | 2 | E2E 402 命中确认重跑 | 🟡 开放 | `e2e/m2-credits.test.ts` URL 已在 `362420f` 修复为 `${API_BASE}/api/quota/test/setup-balance`（L99 实测，`API_BASE` 默认 8001；Claude 疑点 L328/L345 `8000` 系旧行号，现行不存在）；待 Agnes 429 限流缓解后 WSL 3.12 侧 `npx playwright test e2e/m2-credits.test.ts`（`API_BASE=8001`）确认第 11 次命中 402 非 429；回归门槛已在 M2 PR 2 达成，收尾验证不阻塞合入 | @Codex |
 
 > 批次原则：随后续 M3+ 或 chore 批次同批提交，不单独开 commit。e2e URL 勘误项已由 `362420f` 闭合销项，不入本表。
