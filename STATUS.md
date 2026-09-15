@@ -1,8 +1,8 @@
 # 云章PPT智能体系统 - 项目状态报告
 
 **更新日期**: 2026-09-15
-**当前阶段**: Phase 4 M1 已合入 origin/master（`ba61f63` 收口）；M2 文档批（`f668144`+`fd5437a`+`752f974` §3.5 完整版）已合入 origin/master；M2 PR 1 代码批次（`a02e8ce`+`6ba0950`，含工程核认 2 条提醒落码 + 单测 12/12 + E2E 402 改判用例）已合入 origin/master HEAD `6ba0950`，Hermes 终审裁定有条件放行（口径 B），唯一阻塞项 = 回归三项全绿；**M2 PR 2 实施完成：前端 `CreditPanel.tsx`（§3.4 schema 平铺透传 + 402 预判）+ `api.ts` 补 `getQuotaStatus()`/`estimateCreditsRequired()` + `CreditPanel` 挂载至首页 + E2E 402 用例补充值前置（`GET /api/quota/test/setup-balance` dev-only 注入端点）+ 单测 `__tests__/creditPanel.test.ts` 12 项（Vitest 175→185）+ `test_api.py` API_BASE 8000→8001 勘误 + `test_quota_m2.py` GREATEST 残留注释 3 处清理；待 Codex 回归三项（后端 48/48 + Vitest 185/185 + E2E 402 用例命中确认）自执行 + Hermes 终审 → 合入 origin/master**
-**最新 Commit**: `6ba0950`（M2 PR 1 收口：工程核认 2 条提醒落码 + 单测 12 项 + E2E 勘误）/ `a02e8ce`（M2 PR 1 实施）/ `752f974`（M2 §3.5 完整版正式落档 v0.2.3）/ `fd5437a`（M2 启动台账行）/ `f668144`（M1 §3.5 初稿，名实不符由 `752f974` 补正）/ `ba61f63`（M1 收口行落档）
+**当前阶段**: Phase 4 M1 已合入 origin/master（`ba61f63` 收口）；M2 文档批（`f668144`+`fd5437a`+`752f974` §3.5 完整版）已合入 origin/master；M2 PR 1 代码批次（`a02e8ce`+`6ba0950`，含工程核认 2 条提醒落码 + 单测 12/12 + E2E 402 改判用例）已合入 origin/master HEAD `6ba0950`，Hermes 终审裁定有条件放行（口径 B）；**M2 PR 2 实施完成（`ad0cc35`）+ Hermes 终审复核 5 项勘误/修复落码（`362420f`）：① `estimateCreditsRequired` 补 `complexity` 参数（multimodal=6）对齐后端；② 预扣门控补 `free_allowed` 门控（free 未耗尽时不预扣，修复 200 用例误判 402 回归 bug）；③ `quota/status` `credits.required` 对齐 §3.5.1 LIGHT=1；④ 402 判定式收敛为 `not allowed and 0<balance<required`；⑤ E2E setup-balance 路由勘误（`/api/quota/test/setup-balance`）+ 新增 `pytest.ini` 收口 `test_api.py` 4 项 async 收集失败。回归门槛：后端 48/48（test_quota_m2.py 12/12 + test_api.py 4/4，WSL 实测全绿）+ Vitest 185/185；E2E 402/429 用例需 8001 重启 + Agnes 限流缓解后全量重跑（Hermes 终审复核时 Agnes API 429 限流阻塞真实链路验证，判定逻辑已通过后端 8001 直连实测确认）**
+**最新 Commit**: `362420f`（M2 PR 2 终审复核 5 项勘误/修复落码）/ `ad0cc35`（M2 PR 2 实施）/ `6ba0950`（M2 PR 1 收口）/ `a02e8ce`（M2 PR 1 实施）/ `752f974`（M2 §3.5 完整版正式落档）/ `fd5437a`（M2 启动台账行）/ `f668144`（§3.5 初稿，名实不符由 `752f974` 补正）/ `ba61f63`（M1 收口行落档）
 
 ## 团队配置
 
