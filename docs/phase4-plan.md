@@ -2,7 +2,7 @@
 
 **日期**: 2026-09-14
 **作者**: Claude（首席架构师）
-**状态**: 设计稿 v0.2.2.3（v0.2.2.2 后按组长最终裁定更正 M1-2 PR 拆分措辞残留：M1 实施形态由 2 PR（PR-A 积分制 + PR-B P1-#7 时区修复）更正为**单 PR 双 commit**（commit 1 = P1-#7 时区修复 ≤5 行独立 bug fix，commit 2 = DB 迁移 + `check_credits()` + 429→402 切换 + `GET /api/quota/status` + M1 验收节文档），同批一次合入消灭中间态窗口（时区 + 402 改判 + 端点可见性三层），双 commit 保留独立 revert 粒度；slides=[] 口径「同步响应完整携带」定稿不变。JARVIS 终审基准 = 本稿落档 commit）
+**状态**: 设计稿 v0.2.2.4（v0.2.2.3 后行号实测锁定：M1-2 commit 1 域 `:672-676` / commit 2 域 `:677-684`，历史措辞 NIT 以实测为准；含 NIT 行号脚注随 commit 2 同批回补规则；slides=[]「同步响应完整携带」定稿与单 PR 双 commit 方案不变。JARVIS 终审基准 = 本稿落档 commit）
 **前置基线**: `83fda71`（Phase 3 P1 全部交付 + `docs/phase4-plan.md` v0.1 首次落盘）
 
 > 本计划对应 STATUS.md 待办表中 P4 两行：
@@ -155,8 +155,9 @@ CREATE INDEX idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
 > **勘误注记（v0.2.2.3）**：本节 v0.2.2.2 原文写「2 PR（PR-A 积分制 + PR-B P1-#7 时区修复）」，系组长早期裁定残留。最终裁定（Hermes，与 Codex「402/端点可见性中间态」论证一致）为**单 PR 双 commit**：commit 1 时区修复与 commit 2 积分制切换同函数相邻分支（`:672-683`）耦合，拆 2 PR 会在中间态窗口内使 429 路径走旧时区逻辑、402 改判与 `quota/status` 端点不可见，v0.2.2.1 验收 #3「改判窗口与 M1 同批」在单次合入时点无法成立。按以下最终形态执行，本节正文不再保留旧 2 PR 措辞。
 
 - **形态**：单 PR、双 commit，同批一次合入 origin/master。
-  - **commit 1（P1-#7 时区修复）**：`generation.py:672-675` 改 UTC 口径（≤5 行，§五 P1 修复节方案），独立 bug fix，可独立 revert。
-  - **commit 2（积分制全套）**：DB 迁移（`user_credits` + `credit_ledger`，含 #12 `version` 乐观锁列 + #13 `idx_credit_ledger_user_time`）+ `check_credits()` + 402/429 路由切换（`generation.py` 429 分支 `:676-684` → JSONResponse 平铺 + 429→402 改判，§3.3 唯一形态）+ `GET /api/quota/status`（§3.4 鉴权规则）+ **M1-1 口径确认与验收断言随本 commit 同批落档**（含 `numbering_style=null` 为 keep_original 设计口径单行注释，防后续 reviewer 再当 open 项捞起）。
+  - **commit 1（P1-#7 时区修复）**：`generation.py:672-676` 改 UTC 口径（≤5 行，§五 P1 修复节方案；含 L672 `if not allowed:` 入口、L675 `datetime.now()`、L676 `reset_at` 计算行——`reset_at` 计算与时区修复合并 revert 才完整，L675/L676 同属时区域），独立 bug fix，可独立 revert。
+  - **commit 2（积分制全套）**：DB 迁移（`user_credits` + `credit_ledger`，含 #12 `version` 乐观锁列 + #13 `idx_credit_ledger_user_time`）+ `check_credits()` + 402/429 路由切换（`generation.py` 429 分支 `:677-684` → JSONResponse 平铺 + 429→402 改判，§3.3 唯一形态；`used/limit/reset_at` 平铺结构不变）+ `GET /api/quota/status`（§3.4 鉴权规则）+ **M1-1 口径确认与验收断言随本 commit 同批落档**（含 `numbering_style=null` 为 keep_original 设计口径单行注释，防后续 reviewer 再当 open 项捞起）+ **NIT 行号脚注随 commit 2 同批回补**（勘误：commit 2 下界 :677、:676 `reset_at` 计算行归 commit 1 时区修复域，与 commit 1 独立 revert 边界对齐；不另发独立勘误 commit）。
+- **行号实测锁定（三方共核，实施时不再改）**：HEAD `3930d02` 实测 `generation.py` L672 `if not allowed:` / L675 `datetime.now()` / L676 `reset_at` 计算行 → commit 1 时区修复域 `:672-676`；L677 `raise HTTPException(status_code=429...)` 起至 L684 闭括号 → commit 2 切换动作域 `:677-684`；两区间相邻无交叠（`:676` 归 1、`:677` 起归 2）。历史措辞 `:676-684`/`:672-683` 均 NIT，以本行锁定为准。
 - **理由**：commit 1 与 commit 2 覆盖同函数相邻分支（`:672-683`），一次合入统一消灭中间态窗口（时区 + 402 改判 + 端点可见性三层）；双 commit 粒度保留独立回滚能力（revert 时可按 commit 粒度），review 面不因合并而扩大。
 - **执行分工**：Claude 主导起草（单 PR 双 commit + M1-1 口径确认）→ Hermes 组长终审单 PR → Codex 工程核认 + 测试三项（429→402 改判、P1-#7 日界复跑、quota/status 健康断言；E2E 基线 429/402 改判 + Vitest 全绿，R1 同一 PR 内完成不得分叉）。
 
@@ -248,3 +249,4 @@ CREATE INDEX idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
 | v0.2.2 | 2026-09-14 | 组长终审意见（Hermes）11 条 findings 判定 + M1 排期门槛裁定后，v0.2 修订稿终稿定稿（Claude）——§3.3 429/402 定稿 schema 收敛为唯一形态（平铺顶层 `code`），删除「MVP 过渡期嵌套结构并存」兼容段（对应组长裁定 #4）；§3.3 稳态 429 唯一路径锁定为「免费额度耗尽且余额=0」（#3）；P1-#7 时区修复方案明确不动 `quota.py`、只改 `generation.py:674-675`，随终审 commit 一次推上（#7）；STATUS.md L123 背书降调行已随 `2778887` 落盘（#11）。此版为 v0.2 修订稿终稿，待组长终审 commit 推上 origin/master 后 M1 方可排期 |
 | v0.2.2.2 | 2026-09-15 | 新增「三·附、M1 验收节」（Claude）：M1-1 `slides=[]` 回退行为口径定稿为「同步响应完整携带」——原 open 项（`bd3ddc8` 5000 字长文本 `data.slides=[]`）经 `f8220a0` 勘误复核确认为复跑脚本取错字段层级（顶层 vs `data` 内嵌），非工程 bug 非设计缺口；定稿 4 条 M1 验收断言随 PR-A 同批落档。M1-2 PR 拆分裁定 2 PR（PR-A 积分制 + PR-B P1-#7 时区修复，JARVIS 核认通过），执行分工 Claude 起草 → Hermes 组长终审 → Codex 核认 + 测试。JARVIS 终审基准 = 本稿落档 commit + `bd3ddc8` + `f8220a0` |
 | v0.2.2.3 | 2026-09-15 | M1-2 措辞勘误（Claude，经 Hermes 组长裁定授权）：按组长最终裁定「单 PR 双 commit」更正 M1-2 节 2 PR 残留措辞（commit 1 = P1-#7 时区修复 ≤5 行独立 bug fix；commit 2 = DB 迁移 + `check_credits()` + 429→402 切换 + `GET /api/quota/status` + M1 验收节文档），并同步头部状态行；slides=[]「同步响应完整携带」定稿与 4 条验收断言不变，终审基准顺延为本稿落档 commit |
+| v0.2.2.4 | 2026-09-15 | M1-2 行号实测锁定（Claude，三方共核 Hermes/Codex/Claude 一致）：commit 1 域 `:672-676`（含 L676 `reset_at` 计算行）、commit 2 域 `:677-684`（L677 `raise HTTPException(429)` 起至 L684 闭括号），历史措辞 `:676-684`/`:672-683`/`:672-675` 均 NIT 以实测锁定为准；NIT 行号脚注随 commit 2 同批回补规则落档；实施行号基线锚定完成 |
