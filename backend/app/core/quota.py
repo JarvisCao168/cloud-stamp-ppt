@@ -18,6 +18,156 @@ def _today_start_utc() -> str:
     return now.strftime("%Y-%m-%d") + " 00:00:00"
 
 
+def estimate_required(mode: str, input_len: int, complexity: str = "auto") -> int:
+    """
+    M2 计费点折算纯函数（§3.5.1）：按 /create 请求入口的生成模式 + 输入字数 + 复杂度档位，
+    折算本次应预扣的积分数 required（整数，单位=积分；整篇算一次，不按段落拆分）。
+
+    路由映射（§3.5.1 表）：
+    - mode=quick + complexity=auto：≤500 字 → 1（LIGHT）；500 < 输入 ≤4000 → 3（MEDIUM）；
+      4000 < 输入 ≤8000 → 5（HEAVY）；>8000 → 8（HEAVY ×1.5 封顶，R4）
+    - mode=quick + complexity=multimodal（视觉反思/多模态）→ 6（MULTIMODAL，字数档位不参与）
+    - mode=collaborative / full_control（checkpoint 暂停态，/create 不产 slides）→ 0（不计费点）
+    - 未知 mode 兜底 → 0（宁免扣错扣，M4 运营侧再校准）
+
+    独立实现，不接 model_router 字段（§3.5.1 设计约束：model_router 只负责模型通道
+    选择，不承担计费折算；§二 现状锚点 estimated_cost/estimated_tokens 字段无消费点，本函数
+    入参 (mode: str, input_len: int, complexity: str = "auto") → 出参 int，纯函数无副作用）。
+    """
+    if mode in ("collaborative", "full_control"):
+        return 0
+    if complexity == "multimodal":
+        return 6
+    if input_len <= 500:
+        return 1
+    if input_len <= 4000:
+        return 3
+    if input_len <= 8000:
+        return 5
+    return 8
+
+
+def _now_utc_iso() -> str:
+    """UTC ISO 时间戳（流水/updated_at 写入口径，与 reset_at 同 UTC 时区）"""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+
+
+async def debit_credits(
+    user_id: str, required: int, session_id: Optional[str] = None, reason: str = "gen"
+) -> Tuple[bool, int]:
+    """
+    M2 预扣积分（§3.5.2，version 乐观锁并发扣减定稿，§3.1）
+    返回 (成功, 新余额)；语义映射：
+    - 余额不足 → (False, 当前余额)，调用方走 402
+    - 账户行不存在（M1 不赠额，R5；required>0 时余额视为 0）→ (False, -1)，调用方 402 兜底
+    - version 冲突重试 3 次仍失败 → (False, -2)，调用方 503（服务不可用，非用户侧错误）
+    - 成功 → (True, 新余额)；流水 credit_ledger delta=-required，允许 session_id=NULL
+      （预扣时点生成尚未开始，session_id 由生成成功后调用方补写）
+    """
+    if required <= 0:
+        # M1 required=0 语义：扣减无意义，直接放行（与 §3.5.3 `if required > 0` 门控等价）
+        return (True, 0)
+    db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
+    for _ in range(3):
+        conn = await aiosqlite.connect(db_path)
+        try:
+            cursor = await conn.execute(
+                "SELECT version, balance FROM user_credits WHERE user_id = ?",
+                (user_id,),
+            )
+            row = await cursor.fetchone()
+            if row is None:
+                return (False, -1)
+            old_version, balance = row[0], row[1]
+            if balance < required:
+                return (False, balance)
+            # 原子更新（乐观锁定稿 SQL 形态，§3.1）：WHERE version=? 命中 0 行 = 版本已被并发推进 → 重试
+            cursor = await conn.execute(
+                "UPDATE user_credits SET balance = ?, daily_cost = daily_cost + ?, "
+                "version = version + 1, updated_at = ? WHERE user_id = ? AND version = ?",
+                (balance - required, required, _now_utc_iso(), user_id, old_version),
+            )
+            await conn.commit()
+            if cursor.rowcount == 0:
+                continue
+            await conn.execute(
+                "INSERT INTO credit_ledger (user_id, delta, reason, session_id, created_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (user_id, -required, reason, session_id, _now_utc_iso()),
+            )
+            await conn.commit()
+            return (True, balance - required)
+        finally:
+            await conn.close()
+    return (False, -2)
+
+
+async def refund_credits(
+    user_id: str, required: int, session_id: Optional[str] = None, reason: str = "refund"
+) -> bool:
+    """
+    M2 生成失败/中止退款（§3.5.2，乐观锁同 debit；流水 delta=+required，
+    daily_cost 用 GREATEST(0, …) 防负数）
+    账户行不存在或 3 次版本冲突均失败 → 返回 False（不抛异常，由调用方记日志，
+    M4 运营看板告警，不影响生成响应）
+    """
+    if required <= 0:
+        return True
+    db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
+    for _ in range(3):
+        conn = await aiosqlite.connect(db_path)
+        try:
+            cursor = await conn.execute(
+                "SELECT version FROM user_credits WHERE user_id = ?",
+                (user_id,),
+            )
+            row = await cursor.fetchone()
+            if row is None:
+                return False
+            old_version = row[0]
+            # SQLite 无 GREATEST 标量函数，用 CASE WHEN 等价写法防 daily_cost 负数
+            cursor = await conn.execute(
+                "UPDATE user_credits SET balance = balance + ?, "
+                "daily_cost = CASE WHEN daily_cost - ? > 0 THEN daily_cost - ? ELSE 0 END, "
+                "version = version + 1, updated_at = ? WHERE user_id = ? AND version = ?",
+                (required, required, required, _now_utc_iso(), user_id, old_version),
+            )
+            await conn.commit()
+            if cursor.rowcount == 0:
+                continue
+            await conn.execute(
+                "INSERT INTO credit_ledger (user_id, delta, reason, session_id, created_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (user_id, +required, reason, session_id, _now_utc_iso()),
+            )
+            await conn.commit()
+            return True
+        finally:
+            await conn.close()
+    return False
+
+
+async def update_credit_ledger_session_id(session_id: str, user_id: str, since_ts: str) -> bool:
+    """
+    M2 预扣流水 session_id 补写（§3.5.2 关键设计决策：预扣时点生成尚未开始，
+    流水允许 session_id=NULL；生成成功后由调用方按 user_id + since_ts 窗口补写，
+    命中 credit_ledger 最近一次 NULL session_id 流水）
+    命中 0 行也返回 False，不抛异常
+    """
+    db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
+    conn = await aiosqlite.connect(db_path)
+    try:
+        cursor = await conn.execute(
+            "UPDATE credit_ledger SET session_id = ? WHERE user_id = ? "
+            "AND session_id IS NULL AND created_at >= ? AND delta < 0",
+            (session_id, user_id, since_ts),
+        )
+        await conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        await conn.close()
+
+
 def get_quota_status_sync(user_id: str) -> Tuple[bool, int, int]:
     """
     同步版额度检查（供测试脚本使用）
@@ -44,13 +194,19 @@ async def check_credits(user_id: str, required: int = 0) -> Tuple[bool, int, int
     - allowed = 余额 ≥ 所需（required，M1 固定 0）或 当日免费额度未耗尽
     - 耗尽且余额 = 0 → allowed=False（429 路径，code=daily_free_quota_exceeded）
     - 耗尽且余额 < required → allowed=False（402 路径，M2 预扣点接 required > 0 后生效）
-    判定式（v0.2.3 文档对齐，§3.5.3 拦截式，M1 终审 NIT 裁定）：
-    免费额度未耗尽 or 余额 ≥ 所需 即放行（allowed）；
-    拦截式落码 = generation.py `if not allowed and balance == 0`（429）+ `elif not credit_allowed and balance < required`（402，M2 required>0 后激活）。
-    原 §2.3 OR 判定式 `(not 免费额度allowed or not 积分allowed) and balance < required` 为 M1 设计期保守措辞，
-    已按 M1 终审 NIT 裁定收敛为上式（M1 required=0 时语义等价，M2 起 required>0 后按 §3.5.3 双分支执行）。
+    判定式定稿（§3.5.3 v0.2.3，M2 PR 1 落档版）：
+    免费额度优先：free_allowed = used < limit；credit_allowed = balance ≥ required。
+    - free_allowed = True → 直接放行，不扣积分（免费额度未耗尽时不额外消耗余额）
+    - free_allowed = False and balance ≥ required → 放行 + 预扣 required
+    - free_allowed = False and 0 < balance < required → 拦截 402（余额不足）
+    - free_allowed = False and balance = 0 → 拦截 429（免费额度耗尽且无积分）
+    拦截式落码 = generation.py `if not allowed and balance == 0`（429）
+    + `if not credit_allowed and balance < required`（402，M2 required>0 后激活）。
+    本定稿取代原 §2.3 OR 判定式 `(not 免费额度allowed or not 积分allowed) and balance < required`
+    （M1 设计期保守措辞，required=0 时两者语义等价；M2 起按本定稿双分支执行）。
     单连接内同查 user_credits.balance（缺行视为 0）与 usage_log 当日计数（复用 check_quota 的 since 口径）。
-    M2 扣减走 user_credits.version 乐观锁（§3.1 并发扣减定稿），M1 仅判定不扣减。
+    M2 扣减走 user_credits.version 乐观锁（§3.1 并发扣减定稿，见 debit_credits/refund_credits），
+    M1 仅判定不扣减（required 固定 0，debit_credits 门控 `if required > 0` 不触发）。
     """
     limit = settings.free_daily_limit
     since = _today_start_utc()

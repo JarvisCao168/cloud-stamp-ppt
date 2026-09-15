@@ -17,7 +17,16 @@ from ...core.zhipu_client import zhipu_client
 from ...core.model_router import ModelRouter, TaskComplexity, GenerationMode
 from ...core.hardware_detector import HardwareDetector
 from ...core.checkpoint_engine import CheckpointEngine
-from ...core.quota import check_quota, check_credits, record_usage
+from ...core.quota import (
+    check_quota,
+    check_credits,
+    record_usage,
+    estimate_required,
+    debit_credits,
+    refund_credits,
+    update_credit_ledger_session_id,
+    _now_utc_iso,
+)
 from ...core.config import settings
 
 router = APIRouter()
@@ -669,40 +678,71 @@ async def create_generation(request: GenerationRequest, http_request: Request):
     else:
         quota_user_id = "anon-unknown"
     allowed, used, limit = await check_quota(quota_user_id)
-    credit_allowed, balance, credit_used, credit_limit = await check_credits(quota_user_id)
-    # 拦截式判定（§3.5.3 v0.2.3 文档对齐，原 §2.3 OR 判定式已按 M1 终审 NIT 裁定收敛）：
-    # M1 无预扣点（required=0 恒放行），本拦截分支为 M2 预扣接入预留：
-    # 旧 10 次硬限 429 降级为「免费额度耗尽 + 余额=0」的稳态 429 唯一路径（§3.3）
+    # M2 预扣点接入（§3.5.1 折算 + §3.5.3 判定式定稿，取代 M1 required=0 预留行）：
+    # estimate_required 独立实现，不接 model_router 字段（§二 现状锚点）；
+    # complexity 缺省 "auto"，视觉反思场景由调用方显式传 "multimodal"
+    complexity = "multimodal" if (request.extra_config or {}).get("multimodal") else "auto"
+    required = estimate_required(request.mode, len(request.user_input or ""), complexity)
+    credit_allowed, balance, credit_used, credit_limit = await check_credits(quota_user_id, required)
+
+    # 拦截式判定（§3.5.3 定稿版，M2 起 required > 0，激活 402/503 分支）：
+    # 免费额度优先（free_allowed=used<limit；credit_allowed=balance≥required）
     if not allowed and balance == 0:
         # 稳态 429 唯一路径（§3.3）：免费额度耗尽（used ≥ limit）且余额 = 0。
-        # M1 判定源 = check_quota 免费额度计数（§3.1 迁移顺序第 3 步路由切换）；
-        # M2 预扣点接入后，判定式收敛为 §2.3 OR 语义 (not allowed or not credit_allowed) and balance < required，
-        # 本分支保留为 M2 切换后的 429 触发路径（余额=0 子集）
-        from datetime import datetime, timedelta, timezone
         # reset_at 语义 = 自然日零点（与 quota 重置口径一致，均按 UTC 零点）
+        from datetime import datetime, timedelta, timezone
         now = datetime.now(timezone.utc)
         reset_at = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        # 429：免费额度耗尽且余额 = 0（§3.3 稳态 429 唯一路径）
         return JSONResponse(status_code=429, content={
             "code": "daily_free_quota_exceeded",
             "message": f"今日免费额度已用完（{used}/{limit}），请明天再试",
             "user_id": quota_user_id,
             "usage": {"used": used, "limit": limit, "reset_at": reset_at},
         })
-    # 402：余额不足（M1 required=0 无预扣点 → 此路径不可达，仅预留 §3.3 平铺结构；M2 接 required>0 后生效）
-    if not credit_allowed and balance == 0:
-        required = 0  # M1 固定 0；M2 由 model_router.estimated_cost 折算后此分支激活
+    # 402：免费额度耗尽 且 余额 < required（§3.5.3，M2 required>0 时此分支可达）
+    if not credit_allowed and balance < required:
         return JSONResponse(status_code=402, content={
             "code": "insufficient_credits",
-            "message": f"积分不足（余额 {balance}），请充值或明日免费额度重置后再试",
+            "message": f"积分不足（余额 {balance} / 需 {required}），请充值或明日免费额度重置后再试",
             "user_id": quota_user_id,
             "credits": {"balance": balance, "required": required},
         })
+
+    # 放行 → 预扣（§3.5.3，M2 required>0 时执行；M1 required=0 时 debit_credits 门控不触发）
+    debit_fail: Optional[int] = None
+    debit_ts = _now_utc_iso() if required > 0 else ""
+    if required > 0:
+        debit_ok, new_balance = await debit_credits(quota_user_id, required, reason=f"gen_{complexity}")
+        if not debit_ok:
+            debit_fail = new_balance  # ≥0 余额不足兜底 / -1 账户行不存在 / -2 版本冲突 3 次
+    if debit_fail is not None:
+        if debit_fail == -2:
+            # 503：版本冲突 3 次，服务不可用（非用户侧错误）
+            return JSONResponse(status_code=503, content={
+                "code": "service_unavailable",
+                "message": "积分扣减服务暂时不可用，请稍后重试",
+                "user_id": quota_user_id,
+            })
+        # -1（账户行不存在，余额视为 0）或 ≥0（乐观锁竞态窗口内余额不足）→ 402
+        return JSONResponse(status_code=402, content={
+            "code": "insufficient_credits",
+            "message": f"积分不足（余额 0 / 需 {required}），请充值或明日免费额度重置后再试",
+            "user_id": quota_user_id,
+            "credits": {"balance": 0, "required": required},
+        })
     try:
         response = await generation_service.start_generation(request)
+        # 生成成功后补写预扣流水 session_id（§3.5.2：预扣时点生成未开始，流水 session_id=NULL）
+        if required > 0 and response.session_id:
+            await update_credit_ledger_session_id(response.session_id, quota_user_id, debit_ts)
     except HTTPException:
+        # 生成失败退款（§3.5.2：不抛异常，失败记日志不影响响应）
+        if required > 0:
+            await refund_credits(quota_user_id, required, reason="refund")
         raise
     except Exception as e:
+        if required > 0:
+            await refund_credits(quota_user_id, required, reason="refund")
         raise HTTPException(status_code=500, detail=f"生成失败: {str(e)}")
     # 生成成功记入每日免费额度
     record_usage(quota_user_id, ip=http_request.client.host if http_request.client else None)

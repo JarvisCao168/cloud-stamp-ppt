@@ -223,7 +223,7 @@ async def debit_credits(user_id: str, required: int, session_id: Optional[str] =
 ```python
 async def refund_credits(user_id: str, required: int, session_id: Optional[str] = None, reason: str = "refund") -> bool:
     """
-    生成失败 / 中止时退款（乐观锁同上；流水 delta = +required；daily_cost 用 GREATEST 防负数）
+    生成失败 / 中止时退款（乐观锁同上；流水 delta = +required；daily_cost 用 CASE WHEN 防负数——SQLite 无 GREATEST，§3.5.2 勘误行）
     返回成功（余额加回）；账户行不存在或 3 次版本冲突均失败 → 返回 False（不抛异常，由调用方记日志）
     """
     import aiosqlite
@@ -239,7 +239,8 @@ async def refund_credits(user_id: str, required: int, session_id: Optional[str] 
                 return False
             old_version = row[0]
             cursor = await conn.execute(
-                "UPDATE user_credits SET balance = balance + ?, daily_cost = GREATEST(0, daily_cost - ?), "
+                "UPDATE user_credits SET balance = balance + ?, "
+                "daily_cost = CASE WHEN daily_cost - ? > 0 THEN daily_cost - ? ELSE 0 END, "
                 "version = version + 1, updated_at = ? WHERE user_id = ? AND version = ?",
                 (required, required, _now_utc_iso(), user_id, old_version),
             )
@@ -264,6 +265,7 @@ async def refund_credits(user_id: str, required: int, session_id: Optional[str] 
 - 流水 `reason` 枚举：`gen_quick` / `gen_heavy` / `refund` / `topup`（充值挂登录体系后）/ `adjust`（运营手动，仅 M4 后）；
 - `debit_credits` 返回 `(False, -1)` = 账户行不存在（402 兜底，`required>0` 时余额视为 0）；`(False, -2)` = 3 次版本冲突均失败（503，§3.5.4）；
 - `refund_credits` 失败不抛异常（退款是后台操作，失败记日志由 M4 运营看板告警，不影响生成响应）。
+- **SQLite 勘误**（随 M2 PR 1 同批落档）：§3.5.2 `refund_credits` 原稿 SQL 用 `GREATEST(0, daily_cost - ?)` 防负数——SQLite 无内建 `GREATEST` 标量函数（实测 `sqlite3.OperationalError: no such function: GREATEST`），M2 PR 1 落码改用 `CASE WHEN daily_cost - ? > 0 THEN daily_cost - ? ELSE 0 END` 等价写法，语义与 R5 口径不变。
 
 #### 3.5.3 `/create` 402 分支激活 + 拦截式判定式定稿
 
@@ -349,7 +351,7 @@ if required > 0:
   6. `estimate_required("collaborative", 5000, "auto")` → 0（checkpoint 暂停态不计费）
   7. `debit_credits` 余额充足 → `(True, 新余额)`，`credit_ledger` 写入 `delta=-required`，`version` +1
   8. `debit_credits` 余额不足 → `(False, 当前余额)`，不写流水，`version` 不变
-  9. `refund_credits` 正常退款 → 余额加回，`daily_cost` 不出现负数（`GREATEST(0, …)` 断言）
+  9. `refund_credits` 正常退款 → 余额加回，`daily_cost` 不出现负数（`CASE WHEN … > 0 THEN … ELSE 0 END` 断言，§3.5.2 SQLite 勘误行）
 - E2E 基线改判 402 用例（1 条，随 PR 1 同批更新，§五 R1 / §3.5.4 M1 锚定作废注记）；
 - `next.config.ts` proxy 透传白名单新增 503（§3.3 proxy 节 1 对齐，402 已有）。
 
