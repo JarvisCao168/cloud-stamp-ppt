@@ -183,6 +183,17 @@ fc69cea fix(quota): async check_quota + usage_log schema + /create wiring       
 | 分析期 | 数据整理 + 报告撰写 | Claude | 2026-09-26~09-29 |
 | 评审期 | 团队评审 + 迭代优先级确认 | Hermes | 2026-09-30 |
 
+## M3 启动台账（A+B 裁定，2026-09-16）
+
+- **裁定**：@JARVIS 2026-09-16 裁定 M3 范围 = **A+B**（主链路前置核认 + B SSE 增量事件协议草案），@Hermes 发 M3 启动令（4 步序列）；基座 `098cde9` 不动，HEAD `bcd202c`，M3 交付性质 = **零生产代码变更**（纯文档 + 复核报告 + 排期/风险清单，B 落码在 M4）
+- **启动令第 3 步（@Claude）已交付**：
+  - `docs/m3-b-sse-incremental-events-draft.md`（独立草案全文，M3 收口同 commit 落库）：B 案 3 事件独立 `event` 命名空间（`viewer_joined` / `viewer_left` / `presence_snapshot`，会话开启全量快照）+ payload「只增不删不改义」/ 既有 4+2 事件 schema 冻结 + 分发点清单 D1-D5（`useCollabStream.ts` 实测行号）/ S1-S2（`generation.py` 总线 + 订阅端）逐条列明为 M4 验收项 + 预扣点章节引用组长终审裁定 #4 原文「按整篇计一次，不逐观察者拆分」（预扣由生成方单点触发 `generation.py:685` 实测，`mode="collaborative"` 落 `quota.py:39-40` 既有分桶路径，观察者零预扣路径，`debit_credits`/`record_usage` 零改动）+ 429/402 路径分离标注（429 = `check_quota` 免费额度耗尽 `quota.py:262` 实测 `code=daily_free_quota_exceeded`；402 = `check_credits` `quota.py:214` 实测；presence `required=0` 不经拦截域）+ 基座 `098cde9` 不动声明
+  - `docs/phase4-plan.md` **v0.2.4 增补登记**：新增 §4·B（4·B.1 命名空间 / 4·B.2 payload 规则 / 4·B.3 分发点清单 / 4·B.4 预扣点章节 / 4·B.5 429·402 分离 + 基座声明 + 三条收口硬约束 / 4·B.6 实码勘误行 3 项 / 4·B.7 M4 衔接）+ 状态行升 v0.2.4 + 变更记录 v0.2.4 行；§4.1-4.4 既有锁定内容零改动
+  - **A 子项 2/3 文档落档（协议侧归属）**：`usage_log` 分页计数口径勘误（DDL 复合主键 `(user_id, generated_at)` `db.py:55-61` 实测——`:59` 主键、`:61` 索引 `idx_usage_log_user_date`，无自增 `id` 无 `AUTOINCREMENT`；`record_usage` `quota.py:296-307` 实测 `INSERT OR REPLACE`（`:302`）在复合主键下为 UPSERT 语义，微秒精度 `generated_at`（`:303`）使覆盖路径实际不触发、每次调用各记一行，「同日超限短路 429」不变）+ 三条收口硬约束（① `usage_log` 复合主键 + 索引保留 git 跟踪 ② `config.py` 绝对路径锚定，完整路径勘误为 `backend/app/core/config.py:12-15/:18-27/:75-76` ③ NIT 拦截式判定式 `generation.py:688` + `quota.py:227`）落档为 M3 验收项（触碰即打回），随 §4·B.5/§4·B.6 本 commit 并入
+  - **实码勘误行（台账漂移修正，M4 落码时随 commit 再核）**：当日计数口径三处行号以 HEAD `bcd202c` 实测为准——`since = _today_start_utc()` = `quota.py:201/:236/:268`、`COUNT(*) WHERE user_id=? AND generated_at >= ?` = `:205/:248/:273`（台账历史引用 `:204-208/:247-252/:271-276` 系 M2 落码后漂移 3-4 行，口径本身三处统一无误）
+- **M3 启动令追加硬约束 ④-⑦（B 线 M4 落码时全量生效）**：④ `quota.py:23` `estimate_required` 签名零改动 ⑤ `quota.py:57-107` `debit_credits` 乐观锁结构零改动（3 次重试 + 50ms 退避 + `(False, -2)` 返回）⑥ `record_usage`（`quota.py:296-307`）`INSERT OR REPLACE` 语句不改动 ⑦ 基座 `098cde9` 不动、M3 零代码变更
+- **M3 剩余交付物（@Codex / @Hermes）**：启动令第 2 步 = @Codex 1 轮内工程排期（A 4 项 + B 3 项合并 7 项，含 owner/轮次/前置依赖/收口时间）+ 风险清单（DDL 勘误修正 + 429/402 路径分离标注 + 三条收口硬约束收录）+ Gamma 竞对核实并行（M3 前置 1 天不阻塞）；第 4 步 = @Hermes 逐份终审收口 + 台账同步 + M3 收口 commit 落库
+
 ## cleanup 批次台账（M2 收口后遗留，非阻塞）
 
 | # | 项 | 状态 | 说明 | 负责人 |
