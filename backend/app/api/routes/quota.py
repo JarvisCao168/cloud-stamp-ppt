@@ -88,7 +88,7 @@ async def quota_status(http_request: Request):
     credit_allowed, balance, credit_used, credit_limit = await check_credits(user_id, required_hint)
 
     # §3.4 schema：usage 块 = 免费额度计数（used/limit/reset_at）+ credits 块 = 积分账户
-    # required 固定 0（M1 无预扣点，402 拦截路径挂 M2）
+    # required 对齐 §3.5.1 折算口径：未提供 prompt 长度时按 LIGHT 档默认 1（M1 硬编码 0 已作废）
     return JSONResponse(content={
         "usage": {
             "used": used,
@@ -98,7 +98,7 @@ async def quota_status(http_request: Request):
         },
         "credits": {
             "balance": balance,
-            "required": 0,
+            "required": required_hint,
         },
     })
 

@@ -93,7 +93,10 @@ test.describe('M2 E2E §3.5.4 四态验证', () => {
     const userId = `m2-e2e-402-${Date.now()}`;
     // 402 命中需 0 < balance < required（§3.5.3）：R5 不赠额下 balance=0 时 429 先命中，
     // 故先注入 1 积分（充值路径占位：直接写 user_credits，绕过 M4 未立项的 /pay）
-    const setupRes = await fetch(`${API_BASE}/test/setup-balance?user_id=${encodeURIComponent(userId)}&balance=1`, {
+    // setup-balance 端点挂载于 /api/quota/test/setup-balance（main.py quota.router prefix="/api/quota"，
+    // 路由文件内 path="/test/setup-balance"，dev-only 端点，settings.env != "development" 时 404 静默）。
+    // ad0cc35 初版误写 /test/setup-balance（缺 /api/quota 前缀，Hermes 终审复核时勘误指认，现已修正）。
+    const setupRes = await fetch(`${API_BASE}/api/quota/test/setup-balance?user_id=${encodeURIComponent(userId)}&balance=1`, {
       signal: AbortSignal.timeout(10_000),
     });
     expect(setupRes.status).toBe(200);

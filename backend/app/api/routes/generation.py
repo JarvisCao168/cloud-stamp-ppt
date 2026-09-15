@@ -699,8 +699,10 @@ async def create_generation(request: GenerationRequest, http_request: Request):
             "user_id": quota_user_id,
             "usage": {"used": used, "limit": limit, "reset_at": reset_at},
         })
-    # 402：免费额度耗尽 且 余额 < required（§3.5.3，M2 required>0 时此分支可达）
-    if not credit_allowed and balance < required:
+    # 402：免费额度已用完（used≥limit）且 余额 < required（§3.5.3，M2 required>0 时此分支可达）。
+    # free_allowed=True（免费额度未耗尽）时无论余额多少都不走 402——免费额度优先。
+    # 分支 1 已处理 balance==0 → 429，故此处 balance>0（即 0<balance<required）→ 402。
+    if not allowed and 0 < balance < required:
         return JSONResponse(status_code=402, content={
             "code": "insufficient_credits",
             "message": f"积分不足（余额 {balance} / 需 {required}），请充值或明日免费额度重置后再试",
@@ -708,10 +710,11 @@ async def create_generation(request: GenerationRequest, http_request: Request):
             "credits": {"balance": balance, "required": required},
         })
 
-    # 放行 → 预扣（§3.5.3，M2 required>0 时执行；M1 required=0 时 debit_credits 门控不触发）
+    # 预扣门控（§3.5.3 "免费额度优先"）：免费额度未用完时不预扣，免费额度用完后才预扣。
+    # 余额 < required 且免费额度用完 → 已在上方 402 拦截；余额 < required 且免费额度未用完 → 放行不扣。
     debit_fail: Optional[int] = None
     debit_ts = _now_utc_iso() if required > 0 else ""
-    if required > 0:
+    if required > 0 and not allowed:
         debit_ok, new_balance = await debit_credits(quota_user_id, required, reason=f"gen_{complexity}")
         if not debit_ok:
             debit_fail = new_balance  # ≥0 余额不足兜底 / -1 账户行不存在 / -2 版本冲突 3 次

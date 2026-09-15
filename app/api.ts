@@ -81,9 +81,14 @@ export async function getQuotaStatus(): Promise<QuotaStatus | null> {
  * M2 预扣点场景所需积分估算（前端镜像 §3.5.1 路由映射，供 CreditPanel 展示"本次预计消耗"）
  * 与后端 quota.py estimate_required 同口径（quick × 字数档 / multimodal / collab·full_control=0）
  */
-export function estimateCreditsRequired(prompt: string, mode: PresentationMode): number {
+export function estimateCreditsRequired(
+  prompt: string,
+  mode: PresentationMode,
+  complexity: 'auto' | 'multimodal' = 'auto'
+): number {
   const backendMode = MODE_MAP[mode];
   if (backendMode === 'collaborative' || backendMode === 'full_control') return 0;
+  if (complexity === 'multimodal') return 6;
   const len = prompt.length;
   if (len <= 500) return 1;
   if (len <= 4000) return 3;
