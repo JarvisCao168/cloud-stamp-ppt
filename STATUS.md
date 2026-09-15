@@ -1,4 +1,4 @@
-# 云章PPT智能体系统 - 项目状态报告
+﻿# 云章PPT智能体系统 - 项目状态报告
 
 **更新日期**: 2026-09-15
 **当前阶段**: M2 完整闭环 ✅（origin/master `b369e1f`，零分叉）：M2 PR 1 代码批次（`a02e8ce`+`6ba0950`，含工程核认 2 条提醒落码 + 单测 12/12 + E2E 402 改判用例）+ M2 PR 2 前端批次（`ad0cc35` 实施 + `362420f` 终审复核 5 项勘误/修复：① `estimateCreditsRequired` 补 `complexity` 参数（multimodal=6）对齐后端；② 预扣门控补 `free_allowed` 门控（free 未耗尽时不预扣，修复 200 用例误判 402 回归 bug）；③ `quota/status` `credits.required` 对齐 §3.5.1 LIGHT=1；④ 402 判定式收敛为 `not allowed and 0<balance<required`；⑤ E2E setup-balance 路由勘误（`/api/quota/test/setup-balance`）+ 新增 `pytest.ini` 收口 `test_api.py` 4 项 async 收集失败）+ cleanup 批次 #1 核销（`b369e1f`）全部落库。回归三项全绿：后端 48/48 + Vitest 185/185（含 creditPanel.test.ts 12 项）+ E2E 56/56（402 用例命中确认）。Hermes 终审裁定：PR 1 有条件放行（口径 B）→ 复核后 PR 2 无条件放行 → M2 完整闭环收口（seq 18）。cleanup #2（E2E 402 命中重跑）非阻塞挂 Codex 台账
