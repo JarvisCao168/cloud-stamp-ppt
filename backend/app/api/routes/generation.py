@@ -670,7 +670,7 @@ async def create_generation(request: GenerationRequest, http_request: Request):
         quota_user_id = "anon-unknown"
     allowed, used, limit = await check_quota(quota_user_id)
     credit_allowed, balance, credit_used, credit_limit = await check_credits(quota_user_id)
-    # §2.3 OR 判定（拦截式）：(not allowed or not credit_allowed) and balance < required
+    # 拦截式判定（§3.5.3 v0.2.3 文档对齐，原 §2.3 OR 判定式已按 M1 终审 NIT 裁定收敛）：
     # M1 无预扣点（required=0 恒放行），本拦截分支为 M2 预扣接入预留：
     # 旧 10 次硬限 429 降级为「免费额度耗尽 + 余额=0」的稳态 429 唯一路径（§3.3）
     if not allowed and balance == 0:

@@ -44,8 +44,11 @@ async def check_credits(user_id: str, required: int = 0) -> Tuple[bool, int, int
     - allowed = 余额 ≥ 所需（required，M1 固定 0）或 当日免费额度未耗尽
     - 耗尽且余额 = 0 → allowed=False（429 路径，code=daily_free_quota_exceeded）
     - 耗尽且余额 < required → allowed=False（402 路径，M2 预扣点接 required > 0 后生效）
-    判定式（§2.3 OR 语义）：(not 免费额度allowed or not 积分allowed) and balance < required → 拦截；
-    等价落法 = 免费额度未耗尽 or 余额 ≥ 所需 即放行。
+    判定式（v0.2.3 文档对齐，§3.5.3 拦截式，M1 终审 NIT 裁定）：
+    免费额度未耗尽 or 余额 ≥ 所需 即放行（allowed）；
+    拦截式落码 = generation.py `if not allowed and balance == 0`（429）+ `elif not credit_allowed and balance < required`（402，M2 required>0 后激活）。
+    原 §2.3 OR 判定式 `(not 免费额度allowed or not 积分allowed) and balance < required` 为 M1 设计期保守措辞，
+    已按 M1 终审 NIT 裁定收敛为上式（M1 required=0 时语义等价，M2 起 required>0 后按 §3.5.3 双分支执行）。
     单连接内同查 user_credits.balance（缺行视为 0）与 usage_log 当日计数（复用 check_quota 的 since 口径）。
     M2 扣减走 user_credits.version 乐观锁（§3.1 并发扣减定稿），M1 仅判定不扣减。
     """
