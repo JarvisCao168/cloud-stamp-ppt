@@ -27,6 +27,8 @@
 - 429 响应体：error=daily_free_quota_exceeded, used=10, limit=10, reset_at=次日零点。
 - 测试间隔离：e2e 用例改用动态 user_id（e2e-test-时间戳），避免跨用例污染配额。
 
+> **M1 积分制切换改判说明（本 PR 同批更新，§一 验收标准#5 补充①）**：M1 切换判定源后，稳态 429 路径为「免费额度耗尽且余额 = 0」（§3.3 唯一路径），响应体由嵌套 `detail` 结构改为平铺顶层 `code`（`JSONResponse`），`reset_at` 统一 UTC ISO Z 格式（`%Y-%m-%dT%H:%M:%SZ`，随 P1-#7 时区修复同批生效）。429→402 改判（余额不足路径）在 M2 预扣点接入后生效，M1 仅预留平铺结构，402 断言挂 M2 测试。基线 11 连发第 11 次预期 429 + 顶层 `message`/`code` 存在（不断言嵌套 `usage` 结构，三方共核断言粒度不变）。
+
 ## 测试侧改动（fc69cea 及后续 e2e 补丁）
 
 1. e2e/*.test.ts：API_BASE 支持 E2E_API_BASE 环境变量（默认 8000），createSession 类调用统一注入 user_id，错误 detail 兼容 string/object。

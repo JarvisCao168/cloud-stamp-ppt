@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.core.hardware_detector import HardwareDetector
 from app.core.model_router import ModelRouter
 from app.db import init_db
-from app.api.routes import hardware, generation, checkpoints, assets, export
+from app.api.routes import hardware, generation, checkpoints, assets, export, quota
 
 
 @asynccontextmanager
@@ -53,6 +53,7 @@ app.include_router(generation.router, prefix="/api/collab", tags=["协作MVP"])
 app.include_router(checkpoints.router, prefix="/api/checkpoints", tags=["检查点管理"])
 app.include_router(assets.router, prefix="/api/assets", tags=["设计资产"])
 app.include_router(export.router, prefix="/api/export", tags=["导出服务"])
+app.include_router(quota.router, prefix="/api/quota", tags=["积分额度"])
 
 @app.get("/health")
 async def health_check():

@@ -4,7 +4,7 @@ AI生成路由
 提供极速/协作/全程掌控三种模式的API接口
 """
 from fastapi import APIRouter, HTTPException, Request, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any, AsyncGenerator
 import uuid
@@ -17,7 +17,7 @@ from ...core.zhipu_client import zhipu_client
 from ...core.model_router import ModelRouter, TaskComplexity, GenerationMode
 from ...core.hardware_detector import HardwareDetector
 from ...core.checkpoint_engine import CheckpointEngine
-from ...core.quota import check_quota, record_usage
+from ...core.quota import check_quota, check_credits, record_usage
 from ...core.config import settings
 
 router = APIRouter()
@@ -669,18 +669,34 @@ async def create_generation(request: GenerationRequest, http_request: Request):
     else:
         quota_user_id = "anon-unknown"
     allowed, used, limit = await check_quota(quota_user_id)
-    if not allowed:
+    credit_allowed, balance, credit_used, credit_limit = await check_credits(quota_user_id)
+    # §2.3 OR 判定（拦截式）：(not allowed or not credit_allowed) and balance < required
+    # M1 无预扣点（required=0 恒放行），本拦截分支为 M2 预扣接入预留：
+    # 旧 10 次硬限 429 降级为「免费额度耗尽 + 余额=0」的稳态 429 唯一路径（§3.3）
+    if not allowed and balance == 0:
+        # 稳态 429 唯一路径（§3.3）：免费额度耗尽（used ≥ limit）且余额 = 0。
+        # M1 判定源 = check_quota 免费额度计数（§3.1 迁移顺序第 3 步路由切换）；
+        # M2 预扣点接入后，判定式收敛为 §2.3 OR 语义 (not allowed or not credit_allowed) and balance < required，
+        # 本分支保留为 M2 切换后的 429 触发路径（余额=0 子集）
         from datetime import datetime, timedelta, timezone
         # reset_at 语义 = 自然日零点（与 quota 重置口径一致，均按 UTC 零点）
         now = datetime.now(timezone.utc)
         reset_at = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        raise HTTPException(status_code=429, detail={
-            "error": "daily_free_quota_exceeded",
+        # 429：免费额度耗尽且余额 = 0（§3.3 稳态 429 唯一路径）
+        return JSONResponse(status_code=429, content={
+            "code": "daily_free_quota_exceeded",
             "message": f"今日免费额度已用完（{used}/{limit}），请明天再试",
             "user_id": quota_user_id,
-            "used": used,
-            "limit": limit,
-            "reset_at": reset_at,
+            "usage": {"used": used, "limit": limit, "reset_at": reset_at},
+        })
+    # 402：余额不足（M1 required=0 无预扣点 → 此路径不可达，仅预留 §3.3 平铺结构；M2 接 required>0 后生效）
+    if not credit_allowed and balance == 0:
+        required = 0  # M1 固定 0；M2 由 model_router.estimated_cost 折算后此分支激活
+        return JSONResponse(status_code=402, content={
+            "code": "insufficient_credits",
+            "message": f"积分不足（余额 {balance}），请充值或明日免费额度重置后再试",
+            "user_id": quota_user_id,
+            "credits": {"balance": balance, "required": required},
         })
     try:
         response = await generation_service.start_generation(request)

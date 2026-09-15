@@ -1,7 +1,7 @@
 # 云章PPT智能体系统 - 项目状态报告
 
-**更新日期**: 2026-09-14
-**当前阶段**: Phase 3 P1 全部交付 + Phase 4 设计文档 v0.2.2.3 终审基准锁定（`bd08191` + 本次勘误 commit 已进 origin/master，M1 排期门槛已满足；JARVIS 终审通过即启动 M1）
+**更新日期**: 2026-09-15
+**当前阶段**: Phase 4 M1 积分制切换实施完成（单 PR 双 commit：commit 1 P1-#7 时区修复 + commit 2 DB 迁移 / `check_credits()` / 429 分支平铺切换 / `GET /api/quota/status` / 文档同批，待 Hermes 组长终审 + Codex 工程核认 + 测试三项后一次合入 origin/master；M1 验收节与 NIT 行号脚注已随 commit 2 落档）
 **最新 Commit**: `0a486f8`（v0.2.2 终审定稿：§3.3 429/402 schema 收敛为单一平铺形态 + P1-#7 时区勘误定位 + Codex E2E 断言粒度核认 + STATUS.md 背书降调） / `d0dbac3`（v0.2.1 终审 4 条 WARN 补完：#6 token 语义 / #9 snapshot 边界 / #10 last_cost_date DDL / #12 version 列 + M2 扣减 SQL）/ `2778887`（v0.2 补漏：findings #12/#13 DDL 并入 + 并发扣减方案）/ `83a7ac2`（v0.2 修订稿：并入 Hermes 组长复核意见 9 成立/2 部分 + Claude 设计审查 11 条 findings）/ `83fda71`（v0.1 新建 + STATUS.md DDL/429 口径行补录）/ `7ff2dce`（STATUS.md 测试状态块勘误 + commit 表补录）/ `72cf9cc`（补建 `docs/collab-mvp-report.md`）/ `722ebb1`（429 关闭决策同步）/ `4953829`（STATUS 对齐）/ `451e25d`（收尾：符号名/丢失判定口径对齐 + 文档清理 + 解除跟踪）/ `c466fd2`（429/quota + DB 锚定 + proxy）/ `6911a68`（协作 MVP 前端精修+测试）/ `0146a54`（SSE 后端）/ `523706a`（长文本优化）
 
 ## 团队配置
@@ -93,8 +93,21 @@ E2E: 55/56 通过（1 flaky，非代码缺陷）✅（429 路径 11 连发 = 10�
 
 **组长终审结果（Hermes，2026-09-14）**: 11 条 findings 全部核认已并入 v0.2.2（P0 六条：#1 不赠额 / #2 跨 user_id 一律 404 / #3 429 唯一保留路径定稿 / #4 平铺 JSONResponse 机制写明 + 过渡兼容段删除 / #6 session-lifetime token / #11 本块背书降调随终审 commit 一次推上，不单独起提交）+ P1 四条（#7 时区 bug 修复节，勘误定位明确不动 `quota.py`、只改 `generation.py:674-675` / #8 `slide_update` 改挂 G4 / #9 A/B 案边界 / #10 `last_cost_date` 列）+ Codex 补充 #12（`version` 乐观锁列 + M2 扣减 SQL）/#13（`credit_ledger` 已有 `idx_credit_ledger_user_time` 索引，无需另开）。终审意见 3 条 NIT（非阻塞）已并入本次终审 commit：① E2E 基线 429 断言粒度三方共核前置项已完成——Hermes/Codex/Claude 共核：`e2e-baseline-report.md`「429 免费额度路径验证」节 + `collab-mvp-report.md`「429 路径验证节」均只断言「状态码 = 429 + `message`/`error` 字段存在」，**未断言嵌套 `detail` 结构本身**；且 `e2e/` 目录 grep `429` 零命中（11 连发验证是报告层操作记录，非 e2e 用例断言）→ **M1 切换判定源后稳态 429 唯一路径保留，基线不需改断言**，M1 PR 仅需同步改 `reset_at` 值（UTC 口径）；② v0.2.1 §4.2.2 缓冲外降级引用了「§4.2.3」但该节不存在（实际边界声明在 §4.2 第 3 条内），引用号笔误，v0.2.2 已修正为「见下行第 3 条」；③ v0.2.1 §3.3 平铺 schema 的 429 `usage.reset_at` 示例值 `2026-09-15T00:00:00Z` 为 UTC 格式，与现状 `generation.py:676` 本地格式（`2026-09-15 00:00:00`）不同——P1-#7 修复后 reset_at 统一 UTC ISO 格式，该示例值即成正确目标值，无冲突。
 
+**Phase 4 M1 实施记录（v0.2.2.4 终审基准后，Claude 单 PR 双 commit 起草）**:
+- **Commit 1（P1-#7 时区修复）**：`generation.py:672-676` 改 UTC 口径（`timezone.utc` + ISO Z `reset_at`），4 行有效变更，行号零漂移，独立可 revert；`quota.py` 一行未动
+- **Commit 2（积分制切换全套）**：
+  - `db.py`：追加 `user_credits`（`balance/daily_cost/last_cost_date/version/updated_at`，#10/#12 列齐）+ `credit_ledger`（`seq AUTOINCREMENT` + `idx_credit_ledger_user_time`，#13）DDL，`init_db()` 幂等建表，旧库直接补表无数据迁移；M1 不赠额（`balance` 初值 0）
+  - `quota.py`：新增 `check_credits(user_id, required=0) → (allowed, balance, used, limit)` 4 元组（§2.3 OR 判定式 `(not allowed or not credit_allowed) and balance < required`，`311473b` 勘误收敛口径；单连接同查 `user_credits.balance` 缺行视为 0 + `usage_log` 当日计数，复用 `check_quota` since 口径；M1 required 固定 0，M2 扣减走 `version` 乐观锁）
+  - `generation.py:677-684`：旧嵌套 `detail` `HTTPException(429)` 分支下线 → `JSONResponse` 平铺双路径：稳态 429 唯一路径（§3.3，`check_quota` 耗尽 `used ≥ limit` 且 `balance == 0`）→ `code=daily_free_quota_exceeded` + 顶层 `usage{used,limit,reset_at}`（`used/limit` 取自 `check_quota` 结果，取值逻辑零改动）；402 预留路径（`balance < required`，M1 required=0 不可达仅留 §3.3 平铺结构，M2 预扣点接入后激活）；判定式按 §2.3 OR 语义收敛，补 `JSONResponse` + `check_credits` import
+  - `routes/quota.py`（新建）：`GET /api/quota/status`（§3.4 鉴权规则——`user_id` 与 `/create` 同源三级解析（`X-User-Id` 指纹 header → `anon-{host}` → `anon-unknown`），显式 `?user_id=` 仅与调用方自身指纹一致时放行、跨 `user_id` 一律 404 不枚举；`init_db()` 防御性建表保证冷启动可查 `user_credits`；响应 `usage` 块含 `used/limit/allowed/reset_at`（UTC ISO Z）+ `credits` 块 `balance/required`（M1 required=0））；`main.py` 注册 `/api/quota` 前缀
+  - 文档同批：`docs/phase4-plan.md` NIT 行号脚注（`M1-2 :676-684 → :677-684`，勘误「下界 :677，:676 reset_at 计算行归 commit 1 时区修复域，与 commit 1 独立 revert 边界对齐；不另发独立勘误 commit」）+ M1-1 4 条验收断言原文已在此前 `bd08191` 落档本次不改；`docs/e2e-baseline-report.md` 429 改判说明（基线脚本附件同步更新，§一 验收#5 补充①同批不拆两批）
+- **测试三项待 Codex 执行**（同 PR 内不分叉）：① 429→402 改判（仅断言状态码 + 顶层 `message`/`code`）② P1-#7 日界复跑（UTC 日界 ±1h 窗口外）③ `quota/status` 健康断言（基线 404 → 合入后 200 + §3.4 schema `usage`+`credits`，跨 user_id 一律 404）
+
 ## Git 历史（近期）
 ```
+311473b docs(m1): M1 执行计划草稿预核 — 双路径判定勘误(429/402) + check_credits 签名收敛 + 测试三项核认  ← Codex
+833f0a8 P1-#7: reset_at 时区口径修复（UTC 零点 + ISO Z 格式）  ← Claude
+8d75d86 docs(phase4): v0.2.2.4 M1-2 行号实测锁定 — :672-676 / :677-684 终稿基线锚定  ← Claude
 320df20 docs(phase4): v0.2.2.3 M1-2 措辞勘误 — 2 PR 残留更正为单 PR 双 commit（组长最终裁定），M1 验收节口径不变  ← Claude
 bd08191 docs(phase4): v0.2.2.2 新增 M1 验收节 — slides=[] 口径定稿（完整携带）+ PR 2 拆方案落档  ← Claude
 f8220a0 docs(collab-mvp-report): 勘误 5000 字长文本 open 项 — slides=[] 系脚本取错字段层级，10 页非空复核确认，open 项关闭  ← Claude

@@ -60,6 +60,27 @@ CREATE TABLE IF NOT EXISTS usage_log (
 );
 CREATE INDEX IF NOT EXISTS idx_usage_log_user_date ON usage_log(user_id, generated_at);
 
+-- 用户积分账户（M1 建表不赠额，balance 初值 = 0；M2 扣减走 version 乐观锁）
+CREATE TABLE IF NOT EXISTS user_credits (
+    user_id        TEXT PRIMARY KEY,
+    balance        INTEGER NOT NULL DEFAULT 0,
+    daily_cost     INTEGER NOT NULL DEFAULT 0,
+    last_cost_date DATE     NOT NULL DEFAULT '1970-01-01',
+    version        INTEGER NOT NULL DEFAULT 0,
+    updated_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 积分流水（M2 扣减/充值/退款入账；M1 仅建表不写流水）
+CREATE TABLE IF NOT EXISTS credit_ledger (
+    seq            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id        TEXT NOT NULL,
+    delta          INTEGER NOT NULL,
+    reason         TEXT NOT NULL,
+    session_id     TEXT,
+    created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
+
 -- 创建索引
 CREATE INDEX IF NOT EXISTS idx_numbering_styles_type ON numbering_styles(type);
 CREATE INDEX IF NOT EXISTS idx_numbering_styles_tags ON numbering_styles(tags);
