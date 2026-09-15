@@ -670,10 +670,10 @@ async def create_generation(request: GenerationRequest, http_request: Request):
         quota_user_id = "anon-unknown"
     allowed, used, limit = await check_quota(quota_user_id)
     if not allowed:
-        from datetime import datetime, timedelta
-        # reset_at 语义 = 自然日零点（与 quota 重置口径一致）
-        now = datetime.now()
-        reset_at = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).strftime("%Y-%m-%d 00:00:00")
+        from datetime import datetime, timedelta, timezone
+        # reset_at 语义 = 自然日零点（与 quota 重置口径一致，均按 UTC 零点）
+        now = datetime.now(timezone.utc)
+        reset_at = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         raise HTTPException(status_code=429, detail={
             "error": "daily_free_quota_exceeded",
             "message": f"今日免费额度已用完（{used}/{limit}），请明天再试",
