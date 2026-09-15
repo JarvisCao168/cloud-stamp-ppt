@@ -43,6 +43,9 @@ _collab_subscribers: Dict[str, List[asyncio.Queue]] = {}
 # 每个会话的最近 100 条事件，新订阅者 join 时回放（避免错过 join 前的进度）
 _collab_event_log: Dict[str, List[Dict[str, Any]]] = {}
 _COLLAB_MAX_LOG = 100
+# B 线 presence 在场注册表：session_id -> {viewer_id -> last_seen_ts}（M4 B 线 S2 簿记，
+# viewer_joined 登记 / viewer_left 摘除；presence_snapshot 全量快照即本注册表快照）
+_collab_presence: Dict[str, Dict[str, float]] = {}
 
 
 def _sse_format(event: str, data: Dict[str, Any]) -> str:
@@ -74,18 +77,58 @@ def _collab_snapshot(session_id: str) -> Dict[str, Any]:
 
 @router.get("/stream")
 async def collab_stream(
+    http_request: Request,
     session_id: str = Query(..., description="生成会话ID"),
 ):
     """
     协作 MVP SSE 端点：GET /api/collab/stream?session_id=...
     （主端点挂 generation 路由；main.py 将同一路由再注册到 /api/collab 前缀下）
 
-    事件协议（锁定版，供前端 components/collab/* 消费）：
+    事件协议（M4 B 线扩展版，供前端 components/collab/* 消费）：
       event: snapshot             连接建立时下发一次会话状态快照
       event: generation_progress  流水线各阶段进度（data: {stage, detail, ts}）
       event: collab_status        协作状态变更（data: {status, message}）
       event: ping                 心跳（30s 间隔保活，data: {ts}）
+      # M4 B 线 presence 3 事件（独立 event 命名空间，B 草案 v0.3 定稿 §一 1.2）：
+      event: viewer_joined        观察者 join 回放完成后首帧（data: {session_id, viewer_id, ts, viewers_total}）
+      event: viewer_left          观察者断线 30s 超时无重连（data: 同上，连接关闭/超时经 finally 上报）
+      event: presence_snapshot     新 join 者全量在场快照（data: {session_id, viewers: [{viewer_id, last_seen_ts}], ts}）
+
+    B 线 presence 簿记（S2，B 草案 §三 S2）：per-connection 簿记，viewer_id 口径 =
+    请求方 IP 解析（EventSource 协议下前端无法携带自定义 header，MVP 匿名口径；
+    登录体系立项后升级为 session-bound 身份锚点，与 B 草案 §一 R5 同批，不在 M4 B 线范围）。
     """
+    # B 线 per-connection 簿记（S2，B 草案 §三 S2）：
+    # viewer_id 口径 = 请求方 IP 指纹（MVP 匿名口径；EventSource 协议下前端无法携带
+    # X-User-Id header，降级为 anon-{IP}；登录体系立项后升级为 session-bound 身份锚点，
+    # 与 B 草案 §一 R5 同批，不在 M4 B 线范围）
+    _viewer_id = (
+        f"anon-{http_request.client.host}" if http_request.client else "anon-unknown"
+    )
+    _conn_state = {"joined": False}  # 可变闭包状态：join 首帧发出后置 True，防重复 left
+    _presence_registry = _collab_presence.setdefault(session_id, {})
+
+    def _presence_snapshot_payload() -> Dict[str, Any]:
+        """全量在场快照（B 草案 §一 1.2 presence_snapshot data schema）"""
+        now = time.time()
+        return {
+            "session_id": session_id,
+            "viewers": [
+                {"viewer_id": vid, "last_seen_ts": ts}
+                for vid, ts in sorted(_presence_registry.items())
+            ],
+            "ts": now,
+        }
+
+    def _presence_incremental(viewers_total: int) -> Dict[str, Any]:
+        """viewer_joined / viewer_left 增量事件 data schema（B 草案 §一 1.2）"""
+        return {
+            "session_id": session_id,
+            "viewer_id": _viewer_id,
+            "ts": time.time(),
+            "viewers_total": viewers_total,
+        }
+
     async def event_stream() -> AsyncGenerator[str, None]:
         q: asyncio.Queue = asyncio.Queue()
         _collab_subscribers.setdefault(session_id, []).append(q)
@@ -95,7 +138,23 @@ async def collab_stream(
                 yield _sse_format(entry["event"], entry["data"])
             # 2) 下发快照
             yield _sse_format("snapshot", _collab_snapshot(session_id))
-            # 3) 持续消费队列，30s 无事件则发 ping 心跳
+            # 3) B 线 join 首帧（B 草案 §一 1.2：join 回放完成后首帧下发）：
+            #    ① 登记本连接至在场注册表 -> ② 广播 viewer_joined（增量，全员收敛 viewers_total）
+            #    -> ③ 广播 presence_snapshot（全量，本连接及在场各方收敛快照）
+            #    回放路径（:136-138 循环）天然覆盖历史 presence 事件下发，无需新增回放通道（S1）
+            _presence_registry[_viewer_id] = time.time()
+            _conn_state["joined"] = True
+            collab_publish(
+                session_id,
+                "viewer_joined",
+                _presence_incremental(len(_presence_registry)),
+            )
+            collab_publish(
+                session_id,
+                "presence_snapshot",
+                _presence_snapshot_payload(),
+            )
+            # 4) 持续消费队列，30s 无事件则发 ping 心跳
             while True:
                 try:
                     entry = await asyncio.wait_for(q.get(), timeout=30)
@@ -106,8 +165,20 @@ async def collab_stream(
             subs = _collab_subscribers.get(session_id, [])
             if q in subs:
                 subs.remove(q)
+            # B 线 viewer_left（B 草案 §一 1.2：连接关闭 / 断线 30s 超时无重连，
+            # 以总线侧 asyncio.Queue 扇出关闭事件为准 -> 生成器 finally 即关闭点）
+            if _conn_state["joined"]:
+                _conn_state["joined"] = False
+                _presence_registry.pop(_viewer_id, None)
+                collab_publish(
+                    session_id,
+                    "viewer_left",
+                    _presence_incremental(len(_presence_registry)),
+                )
             if not subs:
                 _collab_subscribers.pop(session_id, None)
+                if not _collab_presence.get(session_id):
+                    _collab_presence.pop(session_id, None)
 
     return StreamingResponse(
         event_stream(),

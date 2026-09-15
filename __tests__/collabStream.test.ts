@@ -80,6 +80,40 @@ async function firePingEvent() {
   });
 }
 
+async function fireViewerJoined(viewerId: string, viewersTotal: number) {
+  await act(async () => {
+    getMockES()._fire('viewer_joined', {
+      session_id: 'viewer-session',
+      viewer_id: viewerId,
+      ts: Date.now() / 1000,
+      viewers_total: viewersTotal,
+    });
+  });
+}
+
+async function fireViewerLeft(viewerId: string, viewersTotal: number) {
+  await act(async () => {
+    getMockES()._fire('viewer_left', {
+      session_id: 'viewer-session',
+      viewer_id: viewerId,
+      ts: Date.now() / 1000,
+      viewers_total: viewersTotal,
+    });
+  });
+}
+
+async function firePresenceSnapshot(
+  viewers: Array<{ viewer_id: string; last_seen_ts: number }>,
+) {
+  await act(async () => {
+    getMockES()._fire('presence_snapshot', {
+      session_id: 'viewer-session',
+      viewers,
+      ts: Date.now() / 1000,
+    });
+  });
+}
+
 describe('useCollabStream', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -259,6 +293,71 @@ describe('useCollabStream', () => {
       // SSE 通道仍正常工作
       await fireProgressEvents([{ stage: 'intent', detail: '意图理解' }]);
       expect(result.current.progressStages).toContain('intent');
+    });
+  });
+
+  // ================================================================
+  // 测试 4：M4 B 线 presence 3 事件（B 草案 v0.3 §一/§三 D1-D5）
+  // ================================================================
+  describe('B 线 presence 事件', () => {
+    it('viewer_joined 更新 viewersTotal（取后端上报值，非本地加减）', async () => {
+      const { result } = renderHook(() => useCollabStream('viewer-session', true));
+      await act(async () => { getMockES()._fire('snapshot', { session_id: 'viewer-session' }); });
+
+      expect(result.current.viewersTotal).toBeNull();
+      await fireViewerJoined('anon-10.0.0.1', 1);
+      expect(result.current.viewersTotal).toBe(1);
+      await fireViewerJoined('anon-10.0.0.2', 2);
+      expect(result.current.viewersTotal).toBe(2);
+    });
+
+    it('viewer_left 更新 viewersTotal 至离开后的在场数', async () => {
+      const { result } = renderHook(() => useCollabStream('viewer-session', true));
+      await act(async () => { getMockES()._fire('snapshot', { session_id: 'viewer-session' }); });
+
+      await fireViewerJoined('anon-10.0.0.1', 1);
+      await fireViewerJoined('anon-10.0.0.2', 2);
+      expect(result.current.viewersTotal).toBe(2);
+
+      await fireViewerLeft('anon-10.0.0.1', 1);
+      expect(result.current.viewersTotal).toBe(1);
+    });
+
+    it('presence_snapshot 全量收敛 viewersTotal + lastPresenceTs（空快照不覆盖既有值）', async () => {
+      const { result } = renderHook(() => useCollabStream('viewer-session', true));
+      await act(async () => { getMockES()._fire('snapshot', { session_id: 'viewer-session' }); });
+
+      // 先有一条增量事件上报
+      await fireViewerJoined('anon-10.0.0.1', 1);
+      expect(result.current.viewersTotal).toBe(1);
+
+      // 全量快照下发（含 3 名在场观察者）
+      await firePresenceSnapshot([
+        { viewer_id: 'anon-10.0.0.1', last_seen_ts: 1726400000.0 },
+        { viewer_id: 'anon-10.0.0.2', last_seen_ts: 1726400005.0 },
+        { viewer_id: 'anon-10.0.0.3', last_seen_ts: 1726400010.0 },
+      ]);
+      expect(result.current.viewersTotal).toBe(3);
+      expect(result.current.lastPresenceTs).not.toBeNull();
+
+      // 空快照不覆盖既有 viewersTotal（降级保留前值，非本地加减）
+      await firePresenceSnapshot([]);
+      expect(result.current.viewersTotal).toBe(3);
+    });
+
+    it('未知事件名静默忽略（M4 升级前旧客户端回归面 0）', async () => {
+      const { result } = renderHook(() => useCollabStream('viewer-session', true));
+      await act(async () => { getMockES()._fire('snapshot', { session_id: 'viewer-session' }); });
+
+      // 旧客户端未注册 presence 监听器时，EventSource 不触发 -> 前端不报错
+      // 模拟新客户端收到未知事件名：分发闭包对未知 type 不产生任何 state 变更
+      const es = getMockES();
+      await act(async () => {
+        es._fire('some_future_event', { anything: 'unknown' });
+      });
+      expect(result.current.viewersTotal).toBeNull();
+      expect(result.current.lastPresenceTs).toBeNull();
+      expect(result.current.connected).toBe(true);
     });
   });
 });

@@ -34,6 +34,8 @@ export function CollabStatusPanel({ sessionId }: { sessionId: string | null }) {
     statusMessage,
     reconnectAttempts,
     lastPingAt,
+    viewersTotal,
+    lastPresenceTs,
   } = useCollabStream(sessionId, !!sessionId);
 
   const [showPing, setShowPing] = useState(false);
@@ -115,6 +117,21 @@ export function CollabStatusPanel({ sessionId }: { sessionId: string | null }) {
           正在重连（第 {reconnectAttempts} 次）…
         </div>
       )}
+
+      {/* M4 B 线在场人数（viewersTotal = 活跃连接数，非去重用户数，见 B 草案 R3；
+          未上报时降级显示「未上报」，不阻塞渲染） */}
+      <div
+        className={`mb-2 flex items-center gap-1 text-xs ${
+          viewersTotal !== null ? "text-slate-500" : "text-slate-300"
+        }`}
+        data-testid="collab-viewers-indicator"
+      >
+        <span className="inline-block h-1.5 w-1.5 rounded-full bg-slate-300" />
+        {viewersTotal !== null ? `在场 ${viewersTotal} 人` : "在场状态未上报"}
+        {lastPresenceTs !== null && (
+          <span className="text-slate-300">（快照 {new Date(lastPresenceTs).toLocaleTimeString("zh-CN")}）</span>
+        )}
+      </div>
 
       {/* 状态消息 */}
       {status && (

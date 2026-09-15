@@ -1,12 +1,16 @@
 // 协作 MVP 前端组件（文件级隔离：本目录新文件，不碰移动端/长文本相关文件）
-// useCollabStream: SSE 实时进度 hook（含断线重连退避 + 历史回放去重）
+// useCollabStream: SSE 实时进度 hook（含断线重连退避 + 历史回放去重 + B 线 presence 3 事件）
 // CollabStatusPanel: 协作状态面板
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 
-/** SSE 事件协议（与后端 GET /api/collab/stream 对齐） */
-/** generation_progress.stage 枚举（锁定版）
+/** SSE 事件协议（与后端 GET /api/collab/stream 对齐）
+ *  M4 B 线新增 3 事件（独立 event 命名空间，B 草案 v0.3 定稿 §一/§三 D1-D5，零 schema 重叠）：
+ *    viewer_joined      观察者 join 回放完成后首帧（data: {session_id, viewer_id, ts, viewers_total}）
+ *    viewer_left        观察者断线 30s 超时无重连（data: {session_id, viewer_id, ts, viewers_total}）
+ *    presence_snapshot  新 join 者全量在场快照（data: {session_id, viewers: [{viewer_id, last_seen_ts}], ts}）
+ *  generation_progress.stage 枚举（锁定版）
  *  6 值：intent / outline / content / numbering / style / keep_original
  *  扩展值：keep_original_progress（含 pages 计数，长文本分段进度专用）
  *  Phase 4 预留：slide_update / generation_complete（当前无生产端）
@@ -36,7 +40,12 @@ export type CollabEvent =
       };
     }
   | { type: "collab_status"; data: { status: string; message?: string } }
-  | { type: "ping"; data: { ts: number } };
+  | { type: "ping"; data: { ts: number } }
+  // M4 B 线新增（独立 event 命名空间，schema 按 B 草案 §一 1.2 冻结；只增不删不改义，
+  // 未知字段客户端忽略，缺失新字段降级为「未上报」而非报错）
+  | { type: "viewer_joined"; data: { session_id: string; viewer_id: string; ts: number; viewers_total: number } }
+  | { type: "viewer_left"; data: { session_id: string; viewer_id: string; ts: number; viewers_total: number } }
+  | { type: "presence_snapshot"; data: { session_id: string; viewers: { viewer_id: string; last_seen_ts: number }[]; ts: number } };
 
 export interface CollabStreamState {
   connected: boolean;
@@ -47,6 +56,11 @@ export interface CollabStreamState {
   statusMessage: string | null;
   /** 重连次数（0 = 首次连接） */
   reconnectAttempts: number;
+  // M4 B 线 presence 字段（D2：新增 2 字段，既有字段零改动；全缺失 → null → 面板「未上报」降级）
+  /** 最近一次 viewer_joined/viewer_left/presence_snapshot 上报的在场连接数（null = 未上报） */
+  viewersTotal: number | null;
+  /** 最近一次 presence_snapshot 的时间戳（ms，null = 未上报） */
+  lastPresenceTs: number | null;
 }
 
 const RECONNECT_BASE_MS = 1_000;
@@ -75,6 +89,8 @@ export function useCollabStream(sessionId: string | null, enabled = true) {
     status: null,
     statusMessage: null,
     reconnectAttempts: 0,
+    viewersTotal: null,
+    lastPresenceTs: null,
   });
   const [lastPingAt, setLastPingAt] = useState<number | null>(null);
 
@@ -128,6 +144,25 @@ export function useCollabStream(sessionId: string | null, enabled = true) {
             next.status = data.status as string;
             next.statusMessage = (data.message as string | undefined) ?? null;
           }
+          // M4 B 线 presence 分发（D3：不复用 processedProgressRef 去重指纹，presence 事件
+          // 按 viewer 维度天然幂等；只写上报值，缺失字段降级保留前值而非本地加减）
+          if (type === "viewer_joined" || type === "viewer_left") {
+            const d = data as { viewer_id?: string; viewers_total?: number };
+            // viewersTotal 始终取后端上报值（= 活跃连接数，非去重用户数，见 B 草案 R3）；
+            // 缺失 → 保留前值（降级为「未上报」而非本地加减）
+            if (typeof d.viewers_total === "number") next.viewersTotal = d.viewers_total;
+          }
+          if (type === "presence_snapshot") {
+            const d = data as {
+              viewers?: { viewer_id: string; last_seen_ts: number }[];
+              ts?: number;
+            };
+            // ts 为 epoch 秒（后端 time.time() 口径），面板展示需 ms，统一 ×1000
+            if (typeof d.ts === "number") next.lastPresenceTs = Math.round(d.ts * 1000);
+            // presence_snapshot 在场连接数 = 快照 viewers 数组长度（上报值，非本地加减）；
+            // 空快照不覆盖既有 viewersTotal
+            if (Array.isArray(d.viewers) && d.viewers.length > 0) next.viewersTotal = d.viewers.length;
+          }
           return next;
         });
         if (type === "ping") {
@@ -139,6 +174,10 @@ export function useCollabStream(sessionId: string | null, enabled = true) {
       es.addEventListener("generation_progress", onEvent("generation_progress"));
       es.addEventListener("collab_status", onEvent("collab_status"));
       es.addEventListener("ping", onEvent("ping"));
+      // M4 B 线 D4：新增 3 监听器注册（既有 4 行零改动）
+      es.addEventListener("viewer_joined", onEvent("viewer_joined"));
+      es.addEventListener("viewer_left", onEvent("viewer_left"));
+      es.addEventListener("presence_snapshot", onEvent("presence_snapshot"));
 
       es.onerror = () => {
         es.close();
