@@ -6,7 +6,7 @@ M2 预扣点接入单测 9 组（§3.5.5 PR 1 验收）
   1. estimate_required 6 场景路由映射（quick/collaborative/full_control × 字数档 + multimodal）
   2. debit_credits 余额充足 → 成功扣减 + 流水写入 + version+1
   3. debit_credits 余额不足 → 失败，不写流水，version 不变
-  4. refund_credits 正常退款 → 余额加回 + daily_cost 不出现负数（GREATEST(0,…)）
+  4. refund_credits 正常退款 → 余额加回 + daily_cost 不出现负数（CASE WHEN 防负数）
   5. debit_credits 账户行不存在 → (False, -1)（402 兜底）
   6. debit_credits required=0 → (True, 0)（M1 语义，门控等价）
   7. update_credit_ledger_session_id 补写命中
@@ -211,6 +211,37 @@ def test_refund_credits_normal():
             # 流水 delta=+10 已写入
             rows = _ledger_rows(db_path, "user-refund")
             assert any(r[0] == 10 for r in rows)
+
+
+def test_refund_credits_idempotent_by_session_id():
+    """
+    §3.5.2 提醒 ②：refund_credits 幂等按流水号（session_id）去重——
+    同一 session_id 重复调用 refund 两次，余额只加回一次（不双重返还）
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = _make_test_db(tmpdir)
+        _seed_credits(db_path, "user-refund-idem", balance=50)
+
+        async def _scenario():
+            # 先 debit 10（余额 50→40）
+            await debit_credits("user-refund-idem", 10, session_id="sess-idem", reason="gen_auto")
+            # 第一次 refund（session_id="sess-idem"）→ 余额 40→50
+            ok1 = await refund_credits("user-refund-idem", 10, session_id="sess-idem", reason="refund")
+            assert ok1 is True
+            bal_mid = _read_balance(db_path, "user-refund-idem")
+            # 第二次同 session_id 重复 refund → 幂等短路，余额不变
+            ok2 = await refund_credits("user-refund-idem", 10, session_id="sess-idem", reason="refund")
+            assert ok2 is True
+            return bal_mid, _read_balance(db_path, "user-refund-idem")
+
+        with patch.object(settings, "database_url", f"sqlite+aiosqlite:///{db_path}"):
+            bal_after_first, bal_after_second = asyncio.run(_scenario())
+            assert bal_after_first == 50   # 第一次 refund 后余额加回
+            assert bal_after_second == 50   # 幂等：第二次同 session_id refund 不再加回
+            # 流水：debit 1 条 delta=-10 + refund 1 条 delta=+10（第二次短路不写流水）
+            rows = _ledger_rows(db_path, "user-refund-idem")
+            assert len(rows) == 2
+            assert sum(r[0] for r in rows) == 0
 
 
 def test_refund_credits_no_account():

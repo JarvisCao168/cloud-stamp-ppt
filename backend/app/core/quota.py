@@ -6,6 +6,8 @@
 from datetime import datetime, timezone
 from typing import Tuple, Optional
 
+import asyncio
+
 import aiosqlite
 
 from .config import settings
@@ -81,7 +83,8 @@ async def debit_credits(
             old_version, balance = row[0], row[1]
             if balance < required:
                 return (False, balance)
-            # 原子更新（乐观锁定稿 SQL 形态，§3.1）：WHERE version=? 命中 0 行 = 版本已被并发推进 → 重试
+            # 原子更新（乐观锁定稿 SQL 形态，§3.1）：WHERE version=? 命中 0 行 = 版本已被并发推进
+            # → 重试（退避固定 50ms 起步，非忙等；§3.5.2 Codex 工程核认提醒 ① 已吸收）
             cursor = await conn.execute(
                 "UPDATE user_credits SET balance = ?, daily_cost = daily_cost + ?, "
                 "version = version + 1, updated_at = ? WHERE user_id = ? AND version = ?",
@@ -89,6 +92,8 @@ async def debit_credits(
             )
             await conn.commit()
             if cursor.rowcount == 0:
+                # 版本冲突：退避 50ms 后重读 version 重试（不忙等，§3.5.2 提醒 ①）
+                await asyncio.sleep(0.05)
                 continue
             await conn.execute(
                 "INSERT INTO credit_ledger (user_id, delta, reason, session_id, created_at) "
@@ -107,13 +112,30 @@ async def refund_credits(
 ) -> bool:
     """
     M2 生成失败/中止退款（§3.5.2，乐观锁同 debit；流水 delta=+required，
-    daily_cost 用 GREATEST(0, …) 防负数）
+    daily_cost 用 CASE WHEN 防负数（SQLite 无 GREATEST 标量函数，§3.5.2 勘误行））
+    幂等去重（§3.5.2 提醒 ② 吸收）：同一流水号（session_id）重复调用不产生二次返还——
+    先查 credit_ledger 中同 session_id + delta=+required 的既有流水，命中则直接返回 True；
+    调用方未传 session_id（session_id=None）时不做去重，保持与 debit 相同语义
     账户行不存在或 3 次版本冲突均失败 → 返回 False（不抛异常，由调用方记日志，
     M4 运营看板告警，不影响生成响应）
     """
     if required <= 0:
         return True
     db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
+    # 幂等去重：同流水号（session_id）已有 delta=+required 的退款流水 → 直接返回成功
+    if session_id is not None:
+        conn = await aiosqlite.connect(db_path)
+        try:
+            cursor = await conn.execute(
+                "SELECT COUNT(*) FROM credit_ledger WHERE user_id = ? AND session_id = ? "
+                "AND delta = ? AND reason = 'refund'",
+                (user_id, session_id, +required),
+            )
+            row = await cursor.fetchone()
+            if row and row[0] > 0:
+                return True
+        finally:
+            await conn.close()
     for _ in range(3):
         conn = await aiosqlite.connect(db_path)
         try:
@@ -134,6 +156,8 @@ async def refund_credits(
             )
             await conn.commit()
             if cursor.rowcount == 0:
+                # 版本冲突：退避 50ms 后重读 version 重试（不忙等，§3.5.2 提醒 ①）
+                await asyncio.sleep(0.05)
                 continue
             await conn.execute(
                 "INSERT INTO credit_ledger (user_id, delta, reason, session_id, created_at) "

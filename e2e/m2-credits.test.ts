@@ -13,7 +13,7 @@ import { test, expect } from '@playwright/test';
  *   200：used < limit（免费额度未耗尽）或 预扣成功
  */
 
-const API_BASE = process.env.E2E_API_BASE || 'http://localhost:8000';
+const API_BASE = process.env.E2E_API_BASE || 'http://localhost:8001';
 const isCI = process.env.CI === 'true';
 test.skip(isCI, 'Skipping M2 E2E in CI - backend not available');
 

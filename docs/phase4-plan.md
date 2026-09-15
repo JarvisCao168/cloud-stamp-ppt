@@ -265,6 +265,8 @@ async def refund_credits(user_id: str, required: int, session_id: Optional[str] 
 - 流水 `reason` 枚举：`gen_quick` / `gen_heavy` / `refund` / `topup`（充值挂登录体系后）/ `adjust`（运营手动，仅 M4 后）；
 - `debit_credits` 返回 `(False, -1)` = 账户行不存在（402 兜底，`required>0` 时余额视为 0）；`(False, -2)` = 3 次版本冲突均失败（503，§3.5.4）；
 - `refund_credits` 失败不抛异常（退款是后台操作，失败记日志由 M4 运营看板告警，不影响生成响应）。
+- **工程核认提醒 ①（Codex M2 核认，PR 1 吸收）**：`debit_credits` / `refund_credits` 3 次版本冲突重试退避固定 50ms 起步（`asyncio.sleep(0.05)`），非忙等裸重试。
+- **工程核认提醒 ②（Codex M2 核认，PR 1 吸收）**：`refund_credits` 按流水号（`session_id`）幂等去重——同一流水号重复调用先查 `credit_ledger` 既有 `delta=+required` 退款流水，命中直接返回成功，防 500 重试路径双重返还；`session_id=None` 时不去重（保持与 debit 同语义）。
 - **SQLite 勘误**（随 M2 PR 1 同批落档）：§3.5.2 `refund_credits` 原稿 SQL 用 `GREATEST(0, daily_cost - ?)` 防负数——SQLite 无内建 `GREATEST` 标量函数（实测 `sqlite3.OperationalError: no such function: GREATEST`），M2 PR 1 落码改用 `CASE WHEN daily_cost - ? > 0 THEN daily_cost - ? ELSE 0 END` 等价写法，语义与 R5 口径不变。
 
 #### 3.5.3 `/create` 402 分支激活 + 拦截式判定式定稿

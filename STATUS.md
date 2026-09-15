@@ -1,8 +1,8 @@
 # 云章PPT智能体系统 - 项目状态报告
 
 **更新日期**: 2026-09-15
-**当前阶段**: Phase 4 M1 积分制切换已合入 origin/master（HEAD `ba61f63`，7 commit 链 `833f0a8→ba61f63`，测试三项 T1/T2/T3 全 PASS，回归门槛 后端 36/36、Vitest 175/175、E2E 55/56 达标）；**M2 文档批 `f668144` 已本地落库（§3.5 预扣点接入设计 + §2.3 判定式文档对齐，v0.2.3，代码零行为变化）**；M2 时序锁定：① Claude 起草 ✅ → ② Codex 工程核认 + 回归预核执行中（Codex 侧 443 网络超时，回归三项预核已交付：后端 36/36 ✅ / Vitest 175/175 ✅ / E2E 55/56 ✅）→ ③ Hermes 终审 → ④ 合入 origin/master
-**最新 Commit**: `f668144`（M2 §3.5 文档批：预估扣点 `estimate_required(mode, payload_size)` + version 乐观锁 `debit_credits`/`refund_credits` + `/create` 402 分支激活 + 单测 9 组映射矩阵，M1 行为零变化） / `ba61f63`（M1 收口行落档，HEAD 推 origin/master） / `8b82fa1`（M1 7 commit 链收尾：.gitignore 追加 .tmp/） / `add780f`（get_db_sync WSL 路径修复） / `0d29d46`（routes/quota.py init_db() 同步调用修复）
+**当前阶段**: Phase 4 M1 已合入 origin/master（`ba61f63` 收口）；M2 文档批（`f668144`+`fd5437a`+`752f974` §3.5 完整版）已合入 origin/master HEAD `752f974`，工程核认通过（Codex seq 13 + 2 条非阻塞提醒）；**M2 PR 1 代码实施完成：`estimate_required` + `debit_credits`/`refund_credits`（version 乐观锁 + 50ms 退避 + 流水号幂等去重）+ `/create` 402/503 分支激活 + 单测 12 项（含幂等去重专项 1 项，pytest 实测 12/12 全绿）+ E2E 402 改判用例；Codex 组 2 自检 2 FAIL 已修复（FAIL 1 GREATEST→CASE WHEN 已由 `a02e8ce` 落实；FAIL 2 并发测试 Windows 侧 event loop 基建差异，WSL 3.12 侧 11/11 PASS 佐证，`test_debit_serial_second_fails` 串行竞争模拟为跨环境稳态保障）；待 Codex 回归三项自执行 + 工程核认 → Hermes 终审 → 合入 origin/master**
+**最新 Commit**: `a02e8ce`（M2 PR 1 实施：estimate_required + debit/refund_credits + /create 402/503 激活 + 单测 11 组 + E2E 402 用例；后续补丁 commit 补齐 50ms 退避 + refund 幂等去重 + 幂等单测 + E2E API_BASE 8001 勘误 + §3.5.2 工程核认提醒落档）/ `752f974`（M2 §3.5 完整版正式落档 v0.2.3）/ `fd5437a`（M2 启动台账行）/ `f668144`（M1 §3.5 初稿，名实不符由 `752f974` 补正）/ `ba61f63`（M1 收口行落档）
 
 ## 团队配置
 
