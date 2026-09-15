@@ -184,7 +184,7 @@ def test_debit_credits_zero_required():
 def test_refund_credits_normal():
     """
     §3.5.5 单测组 9：refund_credits 正常退款 → 余额加回，
-    daily_cost 不出现负数（GREATEST(0, …)）
+    daily_cost 不出现负数（CASE WHEN 防负数，SQLite 无 GREATEST，§3.5.2 勘误行）
     """
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = _make_test_db(tmpdir)
@@ -193,7 +193,7 @@ def test_refund_credits_normal():
         async def _scenario():
             # 先 debit 10（余额 20→10，daily_cost 0→10）
             await debit_credits("user-refund", 10, reason="gen_auto")
-            # 再退款 10（余额 10→20，daily_cost GREATEST(0, 10-10)=0）
+            # 再退款 10（余额 10→20，daily_cost CASE WHEN(10-10>0, 0)=0）
             return await refund_credits("user-refund", 10, reason="refund")
 
         with patch.object(settings, "database_url", f"sqlite+aiosqlite:///{db_path}"):
@@ -201,7 +201,7 @@ def test_refund_credits_normal():
             assert ok is True
             # 余额加回
             assert _read_balance(db_path, "user-refund") == 20
-            # daily_cost = GREATEST(0, 10-10) = 0，非负
+            # daily_cost = CASE WHEN(0>0, 0)=0，非负
             conn = sqlite3.connect(db_path)
             row = conn.execute(
                 "SELECT daily_cost FROM user_credits WHERE user_id = ?", ("user-refund",)

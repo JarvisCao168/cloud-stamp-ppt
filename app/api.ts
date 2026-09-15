@@ -50,6 +50,48 @@ export interface CheckpointAction {
 }
 
 /**
+ * M2 积分/额度查询（GET /api/quota/status，§3.4 schema 平铺透传）
+ *
+ * 返回当前用户（localStorage 指纹 → X-User-Id）的 usage + credits 块：
+ * - usage: 每日免费额度计数（used/limit/allowed/reset_at，UTC 零点）
+ * - credits: 积分账户（balance/required；M2 起 required 随场景 0/1/3/5/6/8）
+ *
+ * 跨 user_id 查询一律 404（oracle 防护），不抛错，前端按"无数据"处理。
+ */
+export interface QuotaStatus {
+  usage: { used: number; limit: number; allowed: boolean; reset_at: string };
+  credits: { balance: number; required: number };
+}
+
+export async function getQuotaStatus(): Promise<QuotaStatus | null> {
+  try {
+    const res = await fetch('/api/quota/status', {
+      method: 'GET',
+      headers: { 'X-User-Id': getClientFingerprint() },
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!res.ok) return null; // 404 等：前端按无账户处理，不阻塞页面
+    return (await res.json()) as QuotaStatus;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * M2 预扣点场景所需积分估算（前端镜像 §3.5.1 路由映射，供 CreditPanel 展示"本次预计消耗"）
+ * 与后端 quota.py estimate_required 同口径（quick × 字数档 / multimodal / collab·full_control=0）
+ */
+export function estimateCreditsRequired(prompt: string, mode: PresentationMode): number {
+  const backendMode = MODE_MAP[mode];
+  if (backendMode === 'collaborative' || backendMode === 'full_control') return 0;
+  const len = prompt.length;
+  if (len <= 500) return 1;
+  if (len <= 4000) return 3;
+  if (len <= 8000) return 5;
+  return 8;
+}
+
+/**
  * 调用后端生成接口
  */
 export async function generateSlides(

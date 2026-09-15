@@ -6,7 +6,7 @@ import asyncio
 import httpx
 import sys
 
-API_BASE = "http://localhost:8000"
+API_BASE = "http://localhost:8001"
 
 
 async def test_health():

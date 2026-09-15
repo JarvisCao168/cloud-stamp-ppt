@@ -1,8 +1,8 @@
 # 云章PPT智能体系统 - 项目状态报告
 
 **更新日期**: 2026-09-15
-**当前阶段**: Phase 4 M1 已合入 origin/master（`ba61f63` 收口）；M2 文档批（`f668144`+`fd5437a`+`752f974` §3.5 完整版）已合入 origin/master HEAD `752f974`，工程核认通过（Codex seq 13 + 2 条非阻塞提醒）；**M2 PR 1 代码实施完成：`estimate_required` + `debit_credits`/`refund_credits`（version 乐观锁 + 50ms 退避 + 流水号幂等去重）+ `/create` 402/503 分支激活 + 单测 12 项（含幂等去重专项 1 项，pytest 实测 12/12 全绿）+ E2E 402 改判用例；Codex 组 2 自检 2 FAIL 已修复（FAIL 1 GREATEST→CASE WHEN 已由 `a02e8ce` 落实；FAIL 2 并发测试 Windows 侧 event loop 基建差异，WSL 3.12 侧 11/11 PASS 佐证，`test_debit_serial_second_fails` 串行竞争模拟为跨环境稳态保障）；待 Codex 回归三项自执行 + 工程核认 → Hermes 终审 → 合入 origin/master**
-**最新 Commit**: `a02e8ce`（M2 PR 1 实施：estimate_required + debit/refund_credits + /create 402/503 激活 + 单测 11 组 + E2E 402 用例；后续补丁 commit 补齐 50ms 退避 + refund 幂等去重 + 幂等单测 + E2E API_BASE 8001 勘误 + §3.5.2 工程核认提醒落档）/ `752f974`（M2 §3.5 完整版正式落档 v0.2.3）/ `fd5437a`（M2 启动台账行）/ `f668144`（M1 §3.5 初稿，名实不符由 `752f974` 补正）/ `ba61f63`（M1 收口行落档）
+**当前阶段**: Phase 4 M1 已合入 origin/master（`ba61f63` 收口）；M2 文档批（`f668144`+`fd5437a`+`752f974` §3.5 完整版）已合入 origin/master；M2 PR 1 代码批次（`a02e8ce`+`6ba0950`，含工程核认 2 条提醒落码 + 单测 12/12 + E2E 402 改判用例）已合入 origin/master HEAD `6ba0950`，Hermes 终审裁定有条件放行（口径 B），唯一阻塞项 = 回归三项全绿；**M2 PR 2 实施完成：前端 `CreditPanel.tsx`（§3.4 schema 平铺透传 + 402 预判）+ `api.ts` 补 `getQuotaStatus()`/`estimateCreditsRequired()` + `CreditPanel` 挂载至首页 + E2E 402 用例补充值前置（`GET /api/quota/test/setup-balance` dev-only 注入端点）+ 单测 `__tests__/creditPanel.test.ts` 12 项（Vitest 175→185）+ `test_api.py` API_BASE 8000→8001 勘误 + `test_quota_m2.py` GREATEST 残留注释 3 处清理；待 Codex 回归三项（后端 48/48 + Vitest 185/185 + E2E 402 用例命中确认）自执行 + Hermes 终审 → 合入 origin/master**
+**最新 Commit**: `6ba0950`（M2 PR 1 收口：工程核认 2 条提醒落码 + 单测 12 项 + E2E 勘误）/ `a02e8ce`（M2 PR 1 实施）/ `752f974`（M2 §3.5 完整版正式落档 v0.2.3）/ `fd5437a`（M2 启动台账行）/ `f668144`（M1 §3.5 初稿，名实不符由 `752f974` 补正）/ `ba61f63`（M1 收口行落档）
 
 ## 团队配置
 

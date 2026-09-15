@@ -8,6 +8,7 @@ import RevealContainer from './components/RevealContainer';
 import CheckpointPanel from './components/CheckpointPanel';
 import LoadingState from './components/LoadingState';
 import ErrorMessage from './components/ErrorMessage';
+import CreditPanel from './components/CreditPanel';
 import { useGeneration } from './generationStore';
 import { MODE_CONFIG } from './machine';
 import { exportPresentationToFile, EXPORT_FORMATS } from './export';
@@ -119,6 +120,9 @@ export default function Home() {
                   描述您想要创建的演示文稿内容，AI 将自动生成幻灯片
                 </p>
               </div>
+
+              {/* M2 积分/额度状态面板（§3.4 schema 平铺透传 + 402 预判预警） */}
+              <CreditPanel prompt={prompt} mode={mode} />
 
               {/* 保持原文模式开关 */}
               <div className="flex items-center gap-3 pt-2">

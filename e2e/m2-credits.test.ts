@@ -65,6 +65,7 @@ test.describe('M2 E2E §3.5.4 四态验证', () => {
   });
 
   test('429：free quota 耗尽（≥10 次）且 balance=0 → 稳态 429 唯一路径（§3.3）', async () => {
+    test.setTimeout(240_000);
     const userId = `m2-e2e-429-${Date.now()}`;
     // 快速耗尽 10 次免费额度（每次 200，最后一次用 429 判断）
     let lastStatus = 200;
@@ -84,31 +85,38 @@ test.describe('M2 E2E §3.5.4 四态验证', () => {
   });
 
   test('402：balance < required（required=1，balance=0）→ 积分不足（§3.5.3 M2 新激活路径）', async () => {
+    test.setTimeout(240_000);
     // M2 起 required > 0（estimate_required("quick", <500字) = 1）
     // balance=0 且 free quota 未耗尽 → credit_allowed = 0 >= 1 = False
     // free_allowed = True → allowed = True → 进入预扣 → debit_credits (False, -1)
     // 账户行不存在 → 402（balance 视为 0）
     const userId = `m2-e2e-402-${Date.now()}`;
-    const res = await createWithUser('云章PPT产品介绍', userId);
-    // M1 下此路径返回 200（required=0 不扣减）；M2 合入后返回 402
-    // 此用例是 E2E 改判用例，预期：
-    //   - 若 M2 代码未合入（当前状态）：200（required=0 不扣减）
-    //   - M2 合入后：402（balance=0 < required=1）
-    // 断言当前行为，M2 合入后此用例须改为 expect(res.status).toBe(402)
-    if (res.status === 200) {
-      // M2 代码未合入：记录 200 基线，M2 合入后须改判
-      expect(res.status).toBe(200);
-    } else {
-      // M2 已合入：断言 402 平铺 schema（§3.5.3 定稿）
-      expect(res.status).toBe(402);
-      const body = await res.json();
-      expect(body.code).toBe('insufficient_credits');
-      expect(body.credits).toBeDefined();
-      expect(body.credits.balance).toBe(0);
-      expect(body.credits.required).toBeGreaterThanOrEqual(1);
-      expect(body.user_id).toBe(userId);
-      expect(body.message).toContain('积分不足');
+    // 402 命中需 0 < balance < required（§3.5.3）：R5 不赠额下 balance=0 时 429 先命中，
+    // 故先注入 1 积分（充值路径占位：直接写 user_credits，绕过 M4 未立项的 /pay）
+    const setupRes = await fetch(`${API_BASE}/test/setup-balance?user_id=${encodeURIComponent(userId)}&balance=1`, {
+      signal: AbortSignal.timeout(10_000),
+    });
+    expect(setupRes.status).toBe(200);
+    // 预热 10 次免费额度：期间 balance=1 ≥ required=1 → 全部 200（预扣 1，balance→0）
+    // 10 次预热结束后 balance=0，required=1 → 第 11 次命中 402（balance=0 < required=1）
+    for (let i = 0; i < 10; i++) {
+      const burnRes = await createWithUser(`402 预热第 ${i + 1} 次`, userId, 'quick');
+      if (burnRes.status === 402) break;
+      if (burnRes.status === 429) {
+        throw new Error(
+          '429 抢先命中（预热期间 balance 被耗尽到 0 后 429 优先于 402，需重注入 1 积分再预热）'
+        );
+      }
     }
+    const resFinal = await createWithUser('云章PPT产品介绍', userId);
+    expect(resFinal.status).toBe(402);
+    const body = await resFinal.json();
+    expect(body.code).toBe('insufficient_credits');
+    expect(body.credits).toBeDefined();
+    expect(body.credits.balance).toBe(0);
+    expect(body.credits.required).toBeGreaterThanOrEqual(1);
+    expect(body.user_id).toBe(userId);
+    expect(body.message).toContain('积分不足');
   });
 
   test('collaborative/full_control mode：required=0（checkpoint 暂停态不计费，§3.5.1）', async () => {

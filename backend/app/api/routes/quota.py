@@ -78,8 +78,14 @@ async def quota_status(http_request: Request):
     if explicit is not None and explicit != user_id:
         raise HTTPException(status_code=404, detail="not found")
 
+    # M2 PR 2 勘误（随 CreditPanel 数据源同批）：required 不再是 M1 硬编码 0，
+    # 改为按 §3.5.1 折算函数 estimate_required 对 quick/auto 场景的默认档取 1
+    # （CreditPanel 展示"本次预计消耗"用；§3.4 credits.required 字段对齐 §3.5 折算口径）
+    from ...core.quota import estimate_required
+    required_hint = estimate_required("quick", 0, "auto")  # 未提供 prompt 长度时按 LIGHT 档默认 1
+
     allowed, used, limit = await check_quota(user_id)
-    credit_allowed, balance, credit_used, credit_limit = await check_credits(user_id)
+    credit_allowed, balance, credit_used, credit_limit = await check_credits(user_id, required_hint)
 
     # §3.4 schema：usage 块 = 免费额度计数（used/limit/reset_at）+ credits 块 = 积分账户
     # required 固定 0（M1 无预扣点，402 拦截路径挂 M2）
@@ -95,6 +101,43 @@ async def quota_status(http_request: Request):
             "required": 0,
         },
     })
+
+
+@router.get("/test/setup-balance")
+async def test_setup_balance(http_request: Request):
+    """
+    测试专用端点（M2 PR 2 E2E 402 用例前置注入）：
+    直接给指定 user_id 注入积分余额，绕过 M4 未立项的 /pay 充值通道，
+    供 E2E 402 用例构造 0 < balance < required 的中间态。
+    仅限 development 环境启用（settings.env 非 development 时返回 404 静默，不暴露端点存在）。
+    """
+    if settings.env != "development":
+        raise HTTPException(status_code=404, detail="not found")
+    user_id = http_request.query_params.get("user_id", "").strip()
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id required")
+    balance_str = http_request.query_params.get("balance", "0")
+    balance = int(balance_str)
+    if balance < 0:
+        raise HTTPException(status_code=400, detail="balance must be >= 0")
+
+    from ...core.quota import _now_utc_iso
+
+    db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
+    conn = await aiosqlite.connect(db_path)
+    try:
+        await conn.executescript(_CREDITS_DDL_SQL)
+        await conn.commit()
+        await conn.execute(
+            "INSERT INTO user_credits (user_id, balance, version, updated_at) "
+            "VALUES (?, ?, 0, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET balance = ?, version = version + 1, updated_at = ?",
+            (user_id, balance, _now_utc_iso(), balance, _now_utc_iso()),
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+    return {"user_id": user_id, "balance": balance, "ok": True}
 
 
 def _next_utc_midnight_iso() -> str:
