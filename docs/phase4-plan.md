@@ -2,7 +2,7 @@
 
 **日期**: 2026-09-14
 **作者**: Claude（首席架构师）
-**状态**: 设计稿 v0.2.2.2（v0.2.2.1 后补 M1 验收节：① `slides=[]` 回退行为口径定稿（完整携带）；② M1 PR 拆分裁定 2 PR（PR-A 积分制 + PR-B P1-#7 时区修复）；JARVIS 已核认 2 PR 方案，终审基准 = 本稿落档 commit）
+**状态**: 设计稿 v0.2.2.3（v0.2.2.2 后按组长最终裁定更正 M1-2 PR 拆分措辞残留：M1 实施形态由 2 PR（PR-A 积分制 + PR-B P1-#7 时区修复）更正为**单 PR 双 commit**（commit 1 = P1-#7 时区修复 ≤5 行独立 bug fix，commit 2 = DB 迁移 + `check_credits()` + 429→402 切换 + `GET /api/quota/status` + M1 验收节文档），同批一次合入消灭中间态窗口（时区 + 402 改判 + 端点可见性三层），双 commit 保留独立 revert 粒度；slides=[] 口径「同步响应完整携带」定稿不变。JARVIS 终审基准 = 本稿落档 commit）
 **前置基线**: `83fda71`（Phase 3 P1 全部交付 + `docs/phase4-plan.md` v0.1 首次落盘）
 
 > 本计划对应 STATUS.md 待办表中 P4 两行：
@@ -145,17 +145,20 @@ CREATE INDEX idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
 1. **现状即完整携带，open 项系复跑脚本取错字段层级（非工程 bug）**：`bd3ddc8` 报告 5000 字长文本 `/create` 同步响应 `data.slides=[]`、`numbering_style=null` 的 open 项，经 `f8220a0` 勘误复核——原脚本 `e2e5000.py` 读的是响应**顶层** `data.get("slides")`，而实际结构中 `slides`/`numbering_style` 嵌套在 `data` 字段内（`data.data.slides`），故恒读到缺省空值。同一 5200 字输入、`keep_original=true` 独立复核（user_id `claude-5000-check`）：`data.data.slides` 实为 **10 页**且首末页无截断，PPTX 导出 `slide_count=10` 与 `/create` 页数一致。
 2. **代码路径无延迟补齐设计**：`_quick_mode_pipeline` keep_original 分支（`generation.py:262-321`）为**同步返回**——`_fill_keep_original()` 直接返回分页结果装入响应 `data` 并写 `sessions`；SSE 仅发布 `keep_original_progress` 进度帧（`generation.py:311-315` 空输入兜底 + `:447-452` 逐页进度），是**进度通知**而非「补齐缺失 slides 的数据通道」。分页契约「非空输入必产 ≥1 页」（`generation.py:379-380`，单测 `test_long_content_paginates_no_loss` 锁定）。collaborative / full_control 两条流水线的同步响应 `data` 仅含 outline + 暂停态消息（`generation.py:565-628`），slides 在 checkpoint 确认动作后生成——这是 checkpoint 暂停态语义，不属于本次讨论的超长输入回退场景。
 3. **超长输入回退路径定稿**：超长单段输入（长文本 8000+ 字档同理）在 `/create` 同步响应内必须完整携带分页后的 `slides`（keep_original 分支）或 `slides` + `numbering_style`（非 keep_original 分支）；SSE 帧不得作为数据补齐依赖。M1 实施与验收时若出现 `data.slides` 为空的同 session 导出正常情形，按 bug 处理（对照 `_paginate_keep_original` 契约定位），不再作设计口径讨论。
-4. **M1 验收断言（随 PR-A 同批落档，进 E2E 回归基线）**：
+4. **M1 验收断言（随 commit 2 同批落档，进 E2E 回归基线）**：
    - 长文本 ≥5000 字、`keep_original=true`：`/create` 同步响应 `data.data.slides` 页数 ≥1 且首/末页含内容行，`numbering_style` 缺省（设计口径，非 null 断言——keep_original 分支响应 dict 本就不含该键，见 `generation.py:321`；导出端由客户端传 `numbering_style_id` 独立解析，`export.py:58`）；
    - 同 session `POST /api/export/pptx` `slide_count` 与 `/create` 响应页数一致；
    - 非 keep_original 路径（8000 字档）：`data.data.slides` + `data.data.numbering_style` 均非空。
 
-### M1-2 PR 拆分裁定（JARVIS 核认通过，组长侧确认）
+### M1-2 PR 拆分裁定（v0.2.2.3 更正：单 PR 双 commit，Hermes 组长最终裁定 + Codex 工程核认）
 
-- **PR-A**：DB 迁移（`user_credits` + `credit_ledger`，含 #12 `version` 乐观锁列 + #13 `idx_credit_ledger_user_time`）+ `check_credits()` + 402/429 路由切换（`generation.py` 429 分支 `:676-684` → JSONResponse 平铺，§3.3 唯一形态）+ `GET /api/quota/status`（§3.4 鉴权规则）+ **M1-1 口径确认随 PR-A 同批落档**。
-- **PR-B**：P1-#7 时区修复（`generation.py:674-675` 改 UTC 口径，≤5 行，§五 P1 修复节方案），独立 PR，与 PR-A 同批推送。
-- **理由**：P1-#7 为独立时区 bug 修复，与积分制核心逻辑无耦合，单独 PR 便于 review 聚焦、回滚粒度细；两 PR 同批推送，排期粒度为 M1 一个批次内完成，不因拆分拉长。
-- **执行分工**：Claude 主导起草 PR-A/PR-B 代码 + 口径确认 → Hermes 组长终审 → Codex 工程核认 + 测试跑通（E2E 基线 429/402 改判 + Vitest 全绿，R1 同一 PR 内完成不得分叉）。
+> **勘误注记（v0.2.2.3）**：本节 v0.2.2.2 原文写「2 PR（PR-A 积分制 + PR-B P1-#7 时区修复）」，系组长早期裁定残留。最终裁定（Hermes，与 Codex「402/端点可见性中间态」论证一致）为**单 PR 双 commit**：commit 1 时区修复与 commit 2 积分制切换同函数相邻分支（`:672-683`）耦合，拆 2 PR 会在中间态窗口内使 429 路径走旧时区逻辑、402 改判与 `quota/status` 端点不可见，v0.2.2.1 验收 #3「改判窗口与 M1 同批」在单次合入时点无法成立。按以下最终形态执行，本节正文不再保留旧 2 PR 措辞。
+
+- **形态**：单 PR、双 commit，同批一次合入 origin/master。
+  - **commit 1（P1-#7 时区修复）**：`generation.py:672-675` 改 UTC 口径（≤5 行，§五 P1 修复节方案），独立 bug fix，可独立 revert。
+  - **commit 2（积分制全套）**：DB 迁移（`user_credits` + `credit_ledger`，含 #12 `version` 乐观锁列 + #13 `idx_credit_ledger_user_time`）+ `check_credits()` + 402/429 路由切换（`generation.py` 429 分支 `:676-684` → JSONResponse 平铺 + 429→402 改判，§3.3 唯一形态）+ `GET /api/quota/status`（§3.4 鉴权规则）+ **M1-1 口径确认与验收断言随本 commit 同批落档**（含 `numbering_style=null` 为 keep_original 设计口径单行注释，防后续 reviewer 再当 open 项捞起）。
+- **理由**：commit 1 与 commit 2 覆盖同函数相邻分支（`:672-683`），一次合入统一消灭中间态窗口（时区 + 402 改判 + 端点可见性三层）；双 commit 粒度保留独立回滚能力（revert 时可按 commit 粒度），review 面不因合并而扩大。
+- **执行分工**：Claude 主导起草（单 PR 双 commit + M1-1 口径确认）→ Hermes 组长终审单 PR → Codex 工程核认 + 测试三项（429→402 改判、P1-#7 日界复跑、quota/status 健康断言；E2E 基线 429/402 改判 + Vitest 全绿，R1 同一 PR 内完成不得分叉）。
 
 ---
 
@@ -244,3 +247,4 @@ CREATE INDEX idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
 | v0.2.1 | 2026-09-14 | 终审补完（Claude）：按 Hermes 组长终审 4 条 WARN 补齐——#6 §4.2.4 token 语义改 session-lifetime（会话创建时生成，多用途，非「一次性」）；#9 §4.2.2 加「缓冲外降级 snapshot 时进度帧不可回放」边界声明（A 案未拍板前默认 B 案语义，M3 拍板 A 则 snapshot payload 增补 `current_stage`/`current_slide`）；#10 §3.1 DDL 补 `last_cost_date DATE NOT NULL DEFAULT '1970-01-01'` 列；#12 §3.1 DDL 补 `version INTEGER NOT NULL DEFAULT 0` 乐观锁列 + M2 扣减 SQL `WHERE version=?` 原子更新口径。对应 Codex 补充 findings #12/#13（#13 已有 `idx_credit_ledger_user_time` 索引无需另开） |
 | v0.2.2 | 2026-09-14 | 组长终审意见（Hermes）11 条 findings 判定 + M1 排期门槛裁定后，v0.2 修订稿终稿定稿（Claude）——§3.3 429/402 定稿 schema 收敛为唯一形态（平铺顶层 `code`），删除「MVP 过渡期嵌套结构并存」兼容段（对应组长裁定 #4）；§3.3 稳态 429 唯一路径锁定为「免费额度耗尽且余额=0」（#3）；P1-#7 时区修复方案明确不动 `quota.py`、只改 `generation.py:674-675`，随终审 commit 一次推上（#7）；STATUS.md L123 背书降调行已随 `2778887` 落盘（#11）。此版为 v0.2 修订稿终稿，待组长终审 commit 推上 origin/master 后 M1 方可排期 |
 | v0.2.2.2 | 2026-09-15 | 新增「三·附、M1 验收节」（Claude）：M1-1 `slides=[]` 回退行为口径定稿为「同步响应完整携带」——原 open 项（`bd3ddc8` 5000 字长文本 `data.slides=[]`）经 `f8220a0` 勘误复核确认为复跑脚本取错字段层级（顶层 vs `data` 内嵌），非工程 bug 非设计缺口；定稿 4 条 M1 验收断言随 PR-A 同批落档。M1-2 PR 拆分裁定 2 PR（PR-A 积分制 + PR-B P1-#7 时区修复，JARVIS 核认通过），执行分工 Claude 起草 → Hermes 组长终审 → Codex 核认 + 测试。JARVIS 终审基准 = 本稿落档 commit + `bd3ddc8` + `f8220a0` |
+| v0.2.2.3 | 2026-09-15 | M1-2 措辞勘误（Claude，经 Hermes 组长裁定授权）：按组长最终裁定「单 PR 双 commit」更正 M1-2 节 2 PR 残留措辞（commit 1 = P1-#7 时区修复 ≤5 行独立 bug fix；commit 2 = DB 迁移 + `check_credits()` + 429→402 切换 + `GET /api/quota/status` + M1 验收节文档），并同步头部状态行；slides=[]「同步响应完整携带」定稿与 4 条验收断言不变，终审基准顺延为本稿落档 commit |
