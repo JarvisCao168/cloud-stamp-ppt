@@ -1,8 +1,8 @@
 # M3 · B 案 SSE 增量事件协议草案（v0.3 定稿）
 
-**日期**: 2026-09-16（v0.1 草案）｜2026-09-16（v0.2 定稿，@Hermes 终审核对后修正落稿，同 commit 随组落库）｜2026-09-16（v0.3，@Codex M3 实码核认报告复核后落改，同 commit 随组落库）
+**日期**: 2026-09-16（v0.1 草案）｜2026-09-16（v0.2 定稿，@Hermes 终审核对后修正落稿，同 commit 随组落库）｜2026-09-16（v0.3，@Codex M3 实码核认报告复核后落改，同 commit 随组落库）｜2026-09-16（v0.3 行号回滚，@Hermes M3 终审裁定：§四.4 计数口径行号 `:206/:249/:274` 系参数行误引，回滚为 SQL 字面量行口径 `:205/:248/:273`）
 **作者**: Claude（协议侧，按 M3 启动令 A+B 裁定第 3 步交付）
-**状态**: 定稿 v0.3（M3 交付物，零代码变更；B 落码在 M4；v0.2 已按 @Hermes 终审核对意见修正 6 处行号引用（§八），v0.3 已按 @Codex M3 实码核认报告（2026-09-16）复核落改 3 处：§四.4 当日计数口径台账漂移行号 `:205/:248/:273` 以 HEAD `bcd202c` 实测 `:206/:249/:274` 为准（§九 登记），§四.1「调用点」措辞勘误为「函数定义在 `quota.py:23`、调用点 `generation.py:685`」，§四.2 单测锚点 `:99` 勘误为 `:99-100`（补 `full_control` 同路径双行验证点））
+**状态**: 定稿 v0.3（M3 交付物，零代码变更；B 落码在 M4；v0.2 已按 @Hermes 终审核对意见修正 6 处行号引用（§八），v0.3 已按 @Codex M3 实码核认报告（2026-09-16）复核落改 3 处：§四.4 当日计数口径三处 COUNT 行号回滚为 `:205/:248/:273`（SQL 字符串字面量行口径，终审裁定见 §九 注 1；v0.3 一度误改 `:206/:249/:274` 系参数行误引，已回滚作废），§四.1「调用点」措辞勘误为「函数定义在 `quota.py:23`、调用点 `generation.py:685`」，§四.2 单测锚点 `:99` 勘误为 `:99-100`（补 `full_control` 同路径双行验证点））
 **裁定记录**: M3 范围裁定 **A+B**（@JARVIS 2026-09-16 下达，@Hermes 启动令 4 步序列第 3 步）
 **基座**: `098cde9`（不动）｜工作树 HEAD `bcd202c`（M2 全链，零分叉）｜交付性质：**纯文档**，M3 内不改任何生产代码
 
@@ -85,7 +85,7 @@ B 案 3 个新增事件使用**独立 `event` 命名空间**，不复用 `genera
 1. **预扣触发单点**：预扣由**生成方（编辑者）单点触发**，即 `/create` 路由（`backend/app/api/routes/generation.py:685` `estimate_required(request.mode, len(request.user_input or ""), complexity)` **调用点**——函数定义在 `backend/app/core/quota.py:23`，此处系 v0.2 起误写「调用点」指向定义处、v0.3 勘误归位；HEAD `bcd202c` 实测）；**观察者不触发任何预扣路径**——观察者连接 SSE 流不产生计费点（本稿 3 个 presence 事件本身 `required=0`，不入 `estimate_required` 折算域）。
 2. **分桶路径实码承载**：`estimate_required` 传 `mode="collaborative"` → 落入既有分桶路径 `if mode in ("collaborative", "full_control"): return 0`（`backend/app/core/quota.py:39-40` 实测），**无需新增 `mode` 枚举值**；单测 9 组之 #6（`test_quota_m2.py:99-100` `estimate_required("collaborative", 5000, "auto")` → 0 + `:100` `full_control` 同落 0，v0.3 按 HEAD `bcd202c` 实测补双行锚点）即「整篇计一次」约束的实码承载，M4 协作流 checkpoint 动作计费如需另开，走 §3.5.1 路由表末行「M4 协作流 checkpoint 动作计费单独立项」，不在 B 线范围。
 3. **`debit_credits` 零改动**：B 线不新增扣减调用点、不改 `debit_credits`（`backend/app/core/quota.py:57-107` 乐观锁结构，3 次重试 + 50ms 退避 + `(False, -2)` 返回）任何一行——M3 硬约束 ④⑤⑥（见 §五）在 M4 落码时继续生效。
-4. **`usage_log` 计数同源**：协作会话每次 `/create` 生成后由 `record_usage`（`backend/app/core/quota.py:296-307`，`backend/app/api/routes/generation.py:751` 同步调用点）记一行，当日计数走 `COUNT(*) WHERE user_id=? AND generated_at >= _today_start_utc()` 口径——实码三处（`check_quota` `backend/app/core/quota.py:262` 函数起 内 `:274` `COUNT(*)` / `check_credits` `:214` 函数起 内 `:249` / `get_quota_status_sync` `:195` 函数起 内 `:206`；**行号以 @Codex M3 实码核认报告（HEAD `bcd202c` 实测）为准：`:206/:249/:274`，v0.2 引台账漂移值 `:205/:248/:273` 已勘误，全量登记见 §九**；口径本身三处统一无误，`since = _today_start_utc()` 定义 = `quota.py:17`）；**注：`estimate_required`（`quota.py:23-49`）本身无计数行，不属「三处」之列**（v0.1 稿将 `:273` 误标 `estimate_required` 已勘误，全量登记见 §八）；勘误行号备案 @Hermes 2026-09-16，见 `docs/phase4-plan.md` v0.2.4 勘误落档——与「整篇计一次」同源闭合，B 线不引入第二条计数通道。
+4. **`usage_log` 计数同源**：协作会话每次 `/create` 生成后由 `record_usage`（`backend/app/core/quota.py:296-307`，`backend/app/api/routes/generation.py:751` 同步调用点）记一行，当日计数走 `COUNT(*) WHERE user_id=? AND generated_at >= _today_start_utc()` 口径——实码三处（`check_quota` `backend/app/core/quota.py:262` 函数起 内 `:273` `COUNT(*)` / `check_credits` `:214` 函数起 内 `:248` / `get_quota_status_sync` `:195` 函数起 内 `:205`；**行号终审裁定（@Hermes 2026-09-16 复审）取 SQL 字符串字面量行口径：`:205/:248/:273`；@Codex 核认报告引用的 `:206/:249/:274` 系参数行（`user_id, since`）误引，v0.3 据此落改已回滚作废，全量登记见 §九 注 1**；口径本身三处统一无误，`since = _today_start_utc()` 定义 = `quota.py:17`）；**注：`estimate_required`（`quota.py:23-49`）本身无计数行，不属「三处」之列**（v0.1 稿将 `:273` 误标 `estimate_required` 已勘误，全量登记见 §八）；勘误行号备案 @Hermes 2026-09-16，见 `docs/phase4-plan.md` v0.2.4 勘误落档——与「整篇计一次」同源闭合，B 线不引入第二条计数通道。
 
 ## 五、429 / 402 路径分离标注 + 基座声明 + 收口硬约束
 
@@ -145,14 +145,16 @@ B 案 3 个新增事件使用**独立 `event` 命名空间**，不复用 `genera
 
 **文件路径勘误**：本稿独立文件为 `docs/m3-b-sse-incremental-events-draft.md`（v0.1 首落即此路径，v0.2 定稿不改文件名）；并入 `docs/phase4-plan.md` 的章节编号为 **§4·B**（v0.2.4 新增），二者无冲突。
 
-## 九、v0.3 修正登记（@Codex M3 实码核认报告 2026-09-16 复核意见，本稿 v0.2 → v0.3 逐条落改）
+## 九、v0.3 修正登记（@Codex M3 实码核认报告 2026-09-16 复核意见 + @Hermes M3 终审行号裁定，本稿 v0.2 → v0.3 逐条落改）
 
-> @Codex 核认报告结论「M2 终审裁定全部 7 条硬约束在 `bcd202c` 实码可验，无违反项」，本稿 v0.2 锁定口径全部成立；唯台账行号漂移一项 1 处修正（`:262/:214/:17` 台账漂移值 → 实测 `:274/:249/:19` 口径行），连同 2 处表述勘误一并登记：
+> @Codex 核认报告结论「M2 终审裁定全部 7 条硬约束在 `bcd202c` 实码可验，无违反项」，本稿 v0.2 锁定口径全部成立；本登记 3 条（注 1 行号项经 @Hermes 终审裁定回滚，注 2/注 3 表述勘误保留），连同 @Hermes 2026-09-16 终审行号裁定一并登记：
 
-| # | v0.2 位置 | v0.2 原文 | 实码复核结果（@Codex 核认报告，HEAD `bcd202c`） | v0.3 落改 |
+| # | v0.2 位置 | v0.2 原文 | 实码复核结果（HEAD `bcd202c`，@Hermes 终审裁定） | v0.3 落改 |
 |---|-----------|----------|-----------------------------------------------|-----------|
-| 1 | §四.4 | 台账漂移行号 `:273`（check_quota COUNT）/ `:248`（check_credits COUNT）/ `:205`（get_quota_status_sync COUNT） | 实测口径三处 = `:206`（`get_quota_status_sync`）/ `:249`（`check_credits`）/ `:274`（`check_quota`），台账漂移偏差 +1 行（M2 落码后代码行漂移，口径本身三处统一无误） | §四.4 口径行以实测 `:206/:249/:274` 为准，v0.2 引值标作废 |
-| 2 | §四.1 | 「`generation.py:685` `estimate_required(request.mode, ...)` 调用点」 | `:685` 即调用点（`required = estimate_required(request.mode, len(request.user_input or ""), complexity)`，@Codex 核认 ✅）；函数定义在 `quota.py:23`——v0.2 措辞「调用点」指向定义处系笔误 | §四.1 勘误为「调用点 = `generation.py:685`，函数定义 = `quota.py:23`」 |
-| 3 | §四.2 | 单测锚点 `test_quota_m2.py:99` | 实测 `:99` collaborative → 0 + `:100` full_control → 0，双行锚点（R6 风险项「`full_control` 同路径」实码验证点） | §四.2 补 `:99-100` 双行锚点 + `full_control` 同路径注记 |
+| 注 1（回滚项） | §四.4 | 台账漂移行号 `:273`（check_quota COUNT）/ `:248`（check_credits COUNT）/ `:205`（get_quota_status_sync COUNT） | @Codex 核认报告引用 `:206/:249/:274`，v0.3 一度据此落改；**@Hermes M3 终审裁定（2026-09-16）：`:206/:249/:274` 系参数行（`user_id, since`）误引，非 COUNT 字面量行——`HEAD bcd202c` 工作树直读实测 = `:205`（`get_quota_status_sync`）/ `:248`（`check_credits`）/ `:273`（`check_quota`），SQL 字符串字面量行口径，v0.2 原值正确，v0.3 落改作废回滚；「台账漂移 +1 行」结论一并作废** | §四.4 口径行回滚为 `:205/:248/:273`（SQL 字面量行口径），v0.3 误引 `:206/:249/:274` 作废仅作版本对照保留 |
+| 注 2 | §四.1 | 「`generation.py:685` `estimate_required(request.mode, ...)` 调用点」 | `:685` 即调用点（`required = estimate_required(request.mode, len(request.user_input or ""), complexity)`，@Codex 核认 ✅）；函数定义在 `quota.py:23`——v0.2 措辞「调用点」指向定义处系笔误 | §四.1 勘误为「调用点 = `generation.py:685`，函数定义 = `quota.py:23`」（保留，M3 收口裁定 ✅） |
+| 注 3 | §四.2 | 单测锚点 `test_quota_m2.py:99` | 实测 `:99` collaborative → 0 + `:100` full_control → 0，双行锚点（R6 风险项「`full_control` 同路径」实码验证点） | §四.2 补 `:99-100` 双行锚点 + `full_control` 同路径注记（保留，M3 收口裁定 ✅） |
 
-**v0.3 起 M4 落码引用规则更新**：§三 分发点清单（D1-D5 / S1-S2）行号以 §八 v0.2 表为准；§四.4 口径行号以 **§九 v0.3 表**（`:206/:249/:274`）为准，v0.2 引值（`:205/:248/:273`）作废，仅作版本对照保留。`docs/phase4-plan.md` §4·B.6 勘误行 ① 台账漂移行号引用随本 commit 同步勘误（零代码变更）。
+> **注 1 补记（偏差归因，供 M4 引用）**：@Codex 核认报告引用了 `:206/:249/:274`（COUNT 语句参数行），本稿 v0.3 据此落改 §四.4；@Hermes M3 终审复审以 HEAD `bcd202c` 工作树直读裁定口径统一取 **SQL 字符串字面量行**（`"SELECT COUNT(*) AS cnt FROM usage_log WHERE user_id = ? AND generated_at >= ?"` 所在行）：`:205`（`get_quota_status_sync`）/ `:248`（`check_credits`）/ `:273`（`check_quota`），与 @Codex 报告所引参数行偏差 −1，v0.2 原值即为终审基准。
+
+**v0.3 起 M4 落码引用规则（@Hermes 终审裁定版）**：§三 分发点清单（D1-D5 / S1-S2）行号以 §八 v0.2 表为准；§四.4 当日计数口径行号以 **§九 注 1 回滚值 `:205/:248/:273`**（SQL 字面量行口径）为唯一基准，v0.3 误引 `:206/:249/:274`（参数行）作废仅作版本对照保留；`docs/phase4-plan.md` §4·B.6 勘误行 ① 行号引用随本 commit 同步回滚（零代码变更）。
