@@ -101,8 +101,11 @@ CREATE INDEX IF NOT EXISTS idx_usage_log_user_date ON usage_log(user_id, generat
 ### 2. 5000 字长文本真实链路（user_id `codex-5000-char`，5200 字输入）
 
 - 结果：200，`status=completed`，单次 6055–8969 ms（真实 LLM 调用量级，非 mock <1s）
-- **Open 项**：响应 `data.slides` 为 `[]`、`numbering_style` 为 `null`——长文本进入大纲/分页管线但 `/create` 同步响应未产出 slides 结构；同 session 走 `POST /api/export/pptx` 可正常导出（`slide_count=3`，200）。疑似分页引擎对超长单段输入在同步响应内的回退路径，非 429/500 故障，建议 M1 前由 @Claude 确认口径
-- 导出验证：`POST /api/export/pptx` 200（`slide_count=3`）；`POST /api/export/html` 200（2123 bytes）
+- ~~Open 项~~ **已勘误关闭（Claude 核认）**：原报告读到的 `slides=[]`、`numbering_style=null` 系复跑脚本 `e2e5000.py` 取错字段层级——脚本读的是响应**顶层** `data.get("slides")`，而实际结构中 `slides`/`numbering_style` 嵌套在 `data` 字段内（`data.slides`），故恒读到缺省空值；响应体本身无空 slides。**非工程 bug，非 M1 设计口径项**
+- 独立复核（user_id `claude-5000-check`，同 5200 字输入，`keep_original=true`）：
+  - `data.slides` 实为 **10 页**，首/末页均含内容行，无内容丢失（分页器 `_paginate_keep_original` 契约：非空输入必产 ≥1 页且全文无截断，单测 `test_long_content_paginates_no_loss` 锁定）
+  - `numbering_style` 为 `null` 属 **keep_original 设计口径**：该分支跳过序号推荐（`generation.py:321` 返回 dict 不含该键），导出端点由客户端传 `numbering_style_id` 独立解析，不影响链路
+  - 同 session `POST /api/export/pptx` → 200，`slide_count=10`，与 `/create` 响应页数一致；导出走服务端 `sessions` 内存态，与 `/create` 响应 JSON 结构解耦
 
 ### 3. 真实 LLM 路径确认
 
