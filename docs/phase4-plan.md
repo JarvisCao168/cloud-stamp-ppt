@@ -2,7 +2,7 @@
 
 **日期**: 2026-09-14
 **作者**: Claude（首席架构师）
-**状态**: 设计稿 v0.2.2.4（v0.2.2.3 后行号实测锁定：M1-2 commit 1 域 `:672-676` / commit 2 域 `:677-684`，历史措辞 NIT 以实测为准；含 NIT 行号脚注随 commit 2 同批回补规则；slides=[]「同步响应完整携带」定稿与单 PR 双 commit 方案不变。JARVIS 终审基准 = 本稿落档 commit）
+**状态**: 设计稿 v0.2.3（v0.2.2.4 行号实测锁定后新增 §3.5 M2 预扣点接入设计：`estimate_required()` 计费点路由映射 + `debit_credits()`/`refund_credits()` version 乐观锁 + `/create` 402/503 分支激活 + 拦截式判定式定稿 + M2 两 PR 拆分产出清单；§二 时区口径行勘误 `833f0a8` 已修复；M1 行号实测锁定 `:672-676`/`:677-684` 不变。JARVIS 终审基准 = 本稿落档 commit）
 **前置基线**: `83fda71`（Phase 3 P1 全部交付 + `docs/phase4-plan.md` v0.1 首次落盘）
 
 > 本计划对应 STATUS.md 待办表中 P4 两行：
@@ -134,6 +134,242 @@ CREATE INDEX idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
 
 ---
 
+### 3.5 M2 预扣点接入设计（v0.2.3 新增，Claude 起草）
+
+> 本节为 M2 实施唯一设计基准。M1 已落档 `check_credits()` 4 元组签名 + §3.3 平铺 schema + 拦截式判定式注释，本节补齐 M2 起 `required > 0` 后完整的预扣点接入路径。
+
+#### 3.5.1 `estimate_required()` 折算函数（计费点路由映射）
+
+**职责**：根据当前请求的生成模式 + 输入规模，计算本次 `/create` 应预扣的积分数 `required`。
+
+**路由映射表**（沿用 §3.2 计费公式，按 `/create` 请求入口统一折算，不逐段拆分）：
+
+| 触发场景 | `TaskComplexity` | 基础扣减 | 附加系数 | `required` 取值 |
+|---|---|---|---|---|
+| `mode=quick` + 润色/分类（输入 ≤500 字） | LIGHT | 1 | — | 1 |
+| `mode=quick` + 大纲/意图（500 < 输入 ≤4000 字） | MEDIUM | 3 | — | 3 |
+| `mode=quick` + 多页生成（4000 < 输入 ≤8000 字） | HEAVY | 5 | — | 5 |
+| `mode=quick` + 多页生成（输入 >8000 字） | HEAVY | 5 | ×1.5 | 8（封顶，§3.2 / R4） |
+| `mode=quick` + 视觉反思/多模态（`complexity=MULTIMODAL`） | MULTIMODAL | 6 | — | 6 |
+| `mode=collaborative` / `full_control`（checkpoint 暂停态，`/create` 不产 slides） | —（不计费点） | 0 | — | 0（M4 协作流 checkpoint 动作计费单独立项） |
+
+- `required` 为整数，单位 = 积分（§3.2 各任务档位）；
+- 输入字数阈值（500 / 4000 / 8000）按 `request.user_input` 长度直接判定，无需调用 `model_router.route()`——`model_router` 只负责模型通道选择，**不承担计费折算职责**（§二 现状锚点：`estimated_cost` / `estimated_tokens` 字段已有、当前无消费点，本函数独立实现，不依赖 `model_router` 实例）；
+- `estimated_tokens` 超 32K 的 ×1.5 系数（§3.2）仅在 `required=5` 档生效（HEAVY >8000 字），上限封 8，与 R4 一致（上线前三档实测校准）；
+- 本函数为纯函数，入参 `(mode: str, input_len: int, complexity: str = "auto")` → 出参 `int`，`complexity` 缺省 `"auto"` 时按字数阈值路由，视觉反思场景由调用方显式传 `"multimodal"`；
+- 单测 9 组覆盖见 §3.5.5 PR 1 验收。
+
+#### 3.5.2 `debit_credits()` / `refund_credits()` 实现（version 乐观锁，§3.1 并发扣减定稿）
+
+**位置**：`backend/app/core/quota.py`，与 `check_credits()` 同模块，供 `generation.py` `/create` 路由在判定放行后调用。
+
+**辅助函数**：
+
+```python
+def _now_utc_iso() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+```
+
+**`debit_credits(user_id, required, session_id, reason)`**：
+
+```python
+async def debit_credits(user_id: str, required: int, session_id: Optional[str] = None, reason: str = "gen") -> Tuple[bool, int]:
+    """
+    预扣积分（乐观锁，§3.1 并发扣减定稿）
+    返回 (成功, 新余额)；余额不足返回 (False, 当前余额)；账户行不存在返回 (False, -1)；
+    版本冲突重试 ≤3 次，仍冲突返回 (False, -2)
+    """
+    import aiosqlite
+    db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
+    for attempt in range(3):
+        conn = await aiosqlite.connect(db_path)
+        try:
+            cursor = await conn.execute(
+                "SELECT version, balance FROM user_credits WHERE user_id = ?", (user_id,)
+            )
+            row = await cursor.fetchone()
+            if row is None:
+                # 账户行不存在（M1 不赠额，R5）→ 视为余额 0，直接 402 语义兜底
+                return (False, -1)
+            old_version, balance = row[0], row[1]
+            if balance < required:
+                return (False, balance)   # 余额不足，调用方走 402
+            # 原子更新（乐观锁，§3.1 定稿 SQL 形态）
+            cursor = await conn.execute(
+                "UPDATE user_credits SET balance = ?, daily_cost = daily_cost + ?, version = version + 1, "
+                "updated_at = ? WHERE user_id = ? AND version = ?",
+                (balance - required, required, _now_utc_iso(), user_id, old_version),
+            )
+            await conn.commit()
+            if cursor.rowcount == 0:
+                continue   # 版本已被并发请求推进 → 重试
+            new_balance = balance - required
+            await conn.execute(
+                "INSERT INTO credit_ledger (user_id, delta, reason, session_id, created_at) VALUES (?, ?, ?, ?, ?)",
+                (user_id, -required, reason, session_id, _now_utc_iso()),
+            )
+            await conn.commit()
+            return (True, new_balance)
+        except Exception:
+            pass
+        finally:
+            await conn.close()
+    return (False, -2)   # 3 次版本冲突均失败
+```
+
+**`refund_credits(user_id, required, session_id, reason)`**：
+
+```python
+async def refund_credits(user_id: str, required: int, session_id: Optional[str] = None, reason: str = "refund") -> bool:
+    """
+    生成失败 / 中止时退款（乐观锁同上；流水 delta = +required；daily_cost 用 GREATEST 防负数）
+    返回成功（余额加回）；账户行不存在或 3 次版本冲突均失败 → 返回 False（不抛异常，由调用方记日志）
+    """
+    import aiosqlite
+    db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
+    for attempt in range(3):
+        conn = await aiosqlite.connect(db_path)
+        try:
+            cursor = await conn.execute(
+                "SELECT version FROM user_credits WHERE user_id = ?", (user_id,)
+            )
+            row = await cursor.fetchone()
+            if row is None:
+                return False
+            old_version = row[0]
+            cursor = await conn.execute(
+                "UPDATE user_credits SET balance = balance + ?, daily_cost = GREATEST(0, daily_cost - ?), "
+                "version = version + 1, updated_at = ? WHERE user_id = ? AND version = ?",
+                (required, required, _now_utc_iso(), user_id, old_version),
+            )
+            await conn.commit()
+            if cursor.rowcount == 0:
+                continue
+            await conn.execute(
+                "INSERT INTO credit_ledger (user_id, delta, reason, session_id, created_at) VALUES (?, ?, ?, ?, ?)",
+                (user_id, +required, reason, session_id, _now_utc_iso()),
+            )
+            await conn.commit()
+            return True
+        except Exception:
+            pass
+        finally:
+            await conn.close()
+    return False
+```
+
+**关键设计决策**：
+- `session_id` 在预扣时点尚未生成（`start_generation` 调用前），预扣流水允许 `session_id=NULL`；生成完成后由调用方（`generation.py`）在同一事务内补写流水（`update_credit_ledger_session_id(session_id, user_id, since_ts)`，M2 PR 1 一并实现）；
+- 流水 `reason` 枚举：`gen_quick` / `gen_heavy` / `refund` / `topup`（充值挂登录体系后）/ `adjust`（运营手动，仅 M4 后）；
+- `debit_credits` 返回 `(False, -1)` = 账户行不存在（402 兜底，`required>0` 时余额视为 0）；`(False, -2)` = 3 次版本冲突均失败（503，§3.5.4）；
+- `refund_credits` 失败不抛异常（退款是后台操作，失败记日志由 M4 运营看板告警，不影响生成响应）。
+
+#### 3.5.3 `/create` 402 分支激活 + 拦截式判定式定稿
+
+**M2 起 `generation.py` 判定域（L671-700）改造（随 M2 PR 1 同批，替换 M1 注释 `required = 0` 预留行）**：
+
+```python
+# 判定 + 拦截（M2 起 required > 0，激活 402 / 503 分支）
+allowed, used, limit = await check_quota(quota_user_id)
+required = estimate_required(request.mode, len(request.user_input or ""), complexity)
+credit_allowed, balance, credit_used, credit_limit = await check_credits(quota_user_id, required)
+
+if not allowed and balance == 0:
+    # 稳态 429 唯一路径（§3.3）：免费额度耗尽 且 余额 = 0（M1 起不变）
+    ...  # 现有 JSONResponse(429) 不动
+    return JSONResponse(status_code=429, content={...})
+
+if not credit_allowed and balance < required:
+    # 402：免费额度耗尽 且 余额 < 所需积分（M2 起 required > 0 时此分支可达）
+    return JSONResponse(status_code=402, content={
+        "code": "insufficient_credits",
+        "message": f"积分不足（余额 {balance} / 需 {required}），请充值或明日免费额度重置后再试",
+        "user_id": quota_user_id,
+        "credits": {"balance": balance, "required": required},
+    })
+
+# 放行 → 预扣（M2 起 required > 0 时执行；M1 required=0 时跳过扣减）
+if required > 0:
+    debit_ok, new_balance = await debit_credits(quota_user_id, required, reason=f"gen_{complexity}")
+    if debit_ok:
+        pass  # 扣减成功，继续生成
+    elif new_balance >= 0:
+        # 余额不足（乐观锁竞态窗口内并发读到的 balance < required）→ 402 兜底
+        return JSONResponse(status_code=402, content={...})  # 同上
+    else:
+        # new_balance = -1（账户行不存在）→ 402（balance 视为 0）；-2（版本冲突 3 次）→ 503
+        if new_balance == -2:
+            return JSONResponse(status_code=503, content={
+                "code": "service_unavailable",
+                "message": "积分扣减服务暂时不可用，请稍后重试",
+                "user_id": quota_user_id,
+            })
+        return JSONResponse(status_code=402, content={
+            "code": "insufficient_credits",
+            "message": f"积分不足（余额 0 / 需 {required}），请充值或明日免费额度重置后再试",
+            "user_id": quota_user_id,
+            "credits": {"balance": 0, "required": required},
+        })
+```
+
+**判定式定稿（§2.3 NIT 收敛后正式表述，M2 PR 1 落地时同步写回 `check_credits` docstring + `generation.py` 注释）**：
+
+> 免费额度优先：`free_allowed = used < limit`；`credit_allowed = balance >= required`。
+> - `free_allowed = True` → 直接放行，**不扣积分**（免费额度未耗尽时不额外消耗余额）；
+> - `free_allowed = False and balance >= required` → 放行 + 预扣 `required`；
+> - `free_allowed = False and 0 < balance < required` → 拦截 402（余额不足）；
+> - `free_allowed = False and balance = 0` → 拦截 429（免费额度耗尽且无积分）；
+> - `debit_credits` 返回 `(False, -2)` → 拦截 503（版本冲突 3 次，服务不可用，非用户侧错误）。
+
+此定稿取代 M1 落码注释中"OR 判定式"残留措辞（`quota.py` docstring + `generation.py` L673 注释），M2 PR 1 落地后同步更新，**不单独开文档 commit**（随 PR 1 同批）。
+
+#### 3.5.4 402 / 503 / 429 / 200 四态触发条件汇总（M2 起生效）
+
+| 状态码 | 触发条件 | `code` | 解锁路径 |
+|---|---|---|---|
+| 429 | `used ≥ limit`（免费额度耗尽）且 `balance = 0` | `daily_free_quota_exceeded` | 次日 UTC 零点重置 / 充值 |
+| 402 | `used ≥ limit` 且 `0 ≤ balance < required`（含 `balance = 0` 账户行不存在的兜底） | `insufficient_credits` | 充值至 `balance ≥ required` |
+| 503 | `debit_credits` 乐观锁 3 次版本冲突均失败 | `service_unavailable` | 稍后重试（非用户侧操作） |
+| 200 | `used < limit`（免费额度未耗尽，不扣积分）或 `balance ≥ required`（预扣成功） | —（正常响应） | — |
+
+> **M1 现状锚定**（E2E 基线对照，M2 合入后作废）：M1 下 `required = 0`，402 / 503 分支不可达，稳态 429 为唯一拦截路径（§3.3 已定稿）。M2 合入后 E2E 基线改判 402 用例须与 M2 PR 1 同 PR 完成（§五 R1 口径延续，不得分叉）。
+
+#### 3.5.5 M2 两 PR 拆分产出清单（排期基准，待 @Codex 工程核认后启动）
+
+**PR 1（折算函数 + 扣减实现 + 单测 9 组 + E2E 改判）**：
+- `backend/app/core/quota.py`：新增 `estimate_required()` / `debit_credits()` / `refund_credits()` / `update_credit_ledger_session_id()` / `_now_utc_iso()`；`check_credits` docstring 更新为 §3.5.3 定稿判定式；
+- `backend/app/api/routes/generation.py`：`/create` 判定域（L671-700）按 §3.5.3 改造，L694 `required = 0` 替换为 `estimate_required()` 调用，激活 402 / 503 分支；生成失败 / 中止路径挂 `refund_credits()`（`generation.py` `except` 块，M2 PR 1 一并实现）；
+- **单测 9 组**（新文件 `backend/tests/test_quota_m2.py`，随 PR 1 同批）：
+  1. `estimate_required("quick", 100, "auto")` → 1（LIGHT，≤500 字）
+  2. `estimate_required("quick", 3000, "auto")` → 3（MEDIUM，500-4000 字）
+  3. `estimate_required("quick", 5000, "auto")` → 5（HEAVY 基础，4000-8000 字）
+  4. `estimate_required("quick", 8500, "auto")` → 8（HEAVY >8000 字 ×1.5 封顶）
+  5. `estimate_required("quick", 100, "multimodal")` → 6（视觉反思）
+  6. `estimate_required("collaborative", 5000, "auto")` → 0（checkpoint 暂停态不计费）
+  7. `debit_credits` 余额充足 → `(True, 新余额)`，`credit_ledger` 写入 `delta=-required`，`version` +1
+  8. `debit_credits` 余额不足 → `(False, 当前余额)`，不写流水，`version` 不变
+  9. `refund_credits` 正常退款 → 余额加回，`daily_cost` 不出现负数（`GREATEST(0, …)` 断言）
+- E2E 基线改判 402 用例（1 条，随 PR 1 同批更新，§五 R1 / §3.5.4 M1 锚定作废注记）；
+- `next.config.ts` proxy 透传白名单新增 503（§3.3 proxy 节 1 对齐，402 已有）。
+
+**PR 2（CreditPanel 前端 + E2E 402 断言）**：
+- `app/components/quota/CreditPanel.tsx`：余额 / 当日消耗（`last_cost_date` 清零锚点）/ `reset_at` 倒计时（仅免费额度模式显示）/ 积分流水最近 5 条（§3.4 数据源 `GET /api/quota/status`，M1 已落档）；
+- 前端 `api.ts` 拦截器补 402 / 503 分支（§3.3 proxy 节 3，503 新增）；
+- E2E 402 断言（1 条）：余额 < `required` 时 `/create` 返回 402，`credits.balance` / `credits.required` 字段存在且值正确；
+- Vitest 新增 1 项（CreditPanel 402 态 CTA 渲染），总用例数 +1（173 → 174）。
+
+**排期（待 @Codex 核认后确认）**：
+- PR 1：2-3 天（`estimate_required` 0.5 天 + 扣减/退款实现 1 天 + 单测 9 组 1 天 + E2E 改判 0.5 天）；
+- PR 2：1-2 天（CreditPanel 1 天 + 402 断言 0.5 天）；
+- 合计 3-5 天，与 §五 M2 里程碑「配额面板上线，`reset_at` 倒计时可见」产出对齐。
+
+#### 3.5.6 文档对齐勘误行（§二 时区口径行）
+
+§二 现状锚点表「时区口径（现状 bug）」行末注「本阶段 §3.2 修复」→ 实际修复 commit 为 `833f0a8`（M1 commit 1，P1-#7 时区修复已落 origin/master），`§3.2` 为历史残留引用，更正为「§五 P1-#7 修复节（`833f0a8` 已落 origin/master）」。随本 commit 同步修正，不单独开勘误 commit。
+
+---
+
 ## 三·附、M1 验收节（v0.2.2.2 新增，JARVIS 终审基准内落档）
 
 ### M1-1 `slides=[]` 回退行为口径定稿（原 open 项，经实测勘误后关闭）
@@ -210,7 +446,7 @@ CREATE INDEX idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
 | 里程碑 | 内容 | 前置 | 产出 |
 |--------|------|------|------|
 | M1 | DB 迁移（`user_credits` + `credit_ledger`）+ `check_credits()` + `/create` 切换 + `GET /api/quota/status` | 无 | 积分制可用，旧 10 次硬限降级为告警 |
-| M2 | 429/402 统一 schema + proxy 最小解析 + `CreditPanel` | M1 | 配额面板上线，`reset_at` 倒计时可见 |
+| M2 | 429/402/503 统一 schema + proxy 最小解析 + `CreditPanel` + §3.5 预扣点接入（`estimate_required` + `debit_credits`/`refund_credits` + 单测 9 组 + E2E 改判 402） | M1 | 配额面板上线，`reset_at` 倒计时可见，预扣点可用 |
 | M3 | 事件序号 + `slide_update`/`generation_complete` 生产端 + `Last-Event-ID` + per-session token | 无（与 M1 并行） | SSE 断点续传可用 |
 | M4 | WebSocket 协作编辑（A 案乐观锁）+ 冲突 rebase + 4 项专属测试 + E2E 补断线回放 | M3 | 协作编辑流 MVP，两编辑器场景验证 |
 
@@ -251,3 +487,4 @@ CREATE INDEX idx_credit_ledger_user_time ON credit_ledger(user_id, created_at);
 | v0.2.2.2 | 2026-09-15 | 新增「三·附、M1 验收节」（Claude）：M1-1 `slides=[]` 回退行为口径定稿为「同步响应完整携带」——原 open 项（`bd3ddc8` 5000 字长文本 `data.slides=[]`）经 `f8220a0` 勘误复核确认为复跑脚本取错字段层级（顶层 vs `data` 内嵌），非工程 bug 非设计缺口；定稿 4 条 M1 验收断言随 PR-A 同批落档。M1-2 PR 拆分裁定 2 PR（PR-A 积分制 + PR-B P1-#7 时区修复，JARVIS 核认通过），执行分工 Claude 起草 → Hermes 组长终审 → Codex 核认 + 测试。JARVIS 终审基准 = 本稿落档 commit + `bd3ddc8` + `f8220a0` |
 | v0.2.2.3 | 2026-09-15 | M1-2 措辞勘误（Claude，经 Hermes 组长裁定授权）：按组长最终裁定「单 PR 双 commit」更正 M1-2 节 2 PR 残留措辞（commit 1 = P1-#7 时区修复 ≤5 行独立 bug fix；commit 2 = DB 迁移 + `check_credits()` + 429→402 切换 + `GET /api/quota/status` + M1 验收节文档），并同步头部状态行；slides=[]「同步响应完整携带」定稿与 4 条验收断言不变，终审基准顺延为本稿落档 commit |
 | v0.2.2.4 | 2026-09-15 | M1-2 行号实测锁定（Claude，三方共核 Hermes/Codex/Claude 一致）：commit 1 域 `:672-676`（含 L676 `reset_at` 计算行）、commit 2 域 `:677-684`（L677 `raise HTTPException(429)` 起至 L684 闭括号），历史措辞 `:676-684`/`:672-683`/`:672-675` 均 NIT 以实测锁定为准；NIT 行号脚注随 commit 2 同批回补规则落档；实施行号基线锚定完成 |
+| v0.2.3 | 2026-09-15 | M2 预扣点接入设计 + 文档对齐（Claude）：新增 §3.5（`estimate_required()` 计费点路由映射 6 场景 + `debit_credits()`/`refund_credits()` version 乐观锁实现 + `/create` 402/503 分支激活 + 拦截式判定式定稿取代 M1 OR 判定式残留 + M2 两 PR 拆分产出清单：PR 1 折算函数/扣减实现/单测 9 组/E2E 改判，PR 2 CreditPanel/402 断言）；§二 时区口径行勘误 `833f0a8` 已修复（§3.2 → §五 P1-#7）；§五 M2 里程碑行同步 §3.5；`check_credits` docstring 判定式对齐 §3.5.3（随 M2 PR 1 同批写回） |
