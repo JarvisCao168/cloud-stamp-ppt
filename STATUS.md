@@ -187,7 +187,7 @@ fc69cea fix(quota): async check_quota + usage_log schema + /create wiring       
 
 | # | 项 | 状态 | 说明 | 负责人 |
 |---|---|---|---|---|
-| 1 | `estimate_required` 签名三方偏差 | 🟡 开放 | `docs/phase4-plan.md §3.5.1` 参数名 `payload_size` 更正为 `input_len`（对齐 `quota.py` 实际签名）；`routes/quota.py` status 端点 `required_hint` 注释补「仅 UI 占位，非生成时点实际预扣值」（Hermes seq 20 裁定归 cleanup） | @Claude |
+| 1 | `estimate_required` 签名三方偏差 | 🟢 已核销 | 勘误项 1（docs `payload_size`→`input_len`）经 grep 实测 §3.5.1 落档时即正确（L159 入参 `(mode, input_len, complexity)`），无偏差无需改；勘误项 2（`routes/quota.py` `required_hint` 注释）已落码 L85「仅 UI 占位，非生成时点实际预扣值」；`c0f6f2a` 落库 | @Claude |
 | 2 | E2E 402 命中确认重跑 | 🟡 开放 | `e2e/m2-credits.test.ts` URL 已在 `362420f` 修复为 `${API_BASE}/api/quota/test/setup-balance`（L99 实测，`API_BASE` 默认 8001；Claude 疑点 L328/L345 `8000` 系旧行号，现行不存在）；待 Agnes 429 限流缓解后 WSL 3.12 侧 `npx playwright test e2e/m2-credits.test.ts`（`API_BASE=8001`）确认第 11 次命中 402 非 429；回归门槛已在 M2 PR 2 达成，收尾验证不阻塞合入 | @Codex |
 
 > 批次原则：随后续 M3+ 或 chore 批次同批提交，不单独开 commit。e2e URL 勘误项已由 `362420f` 闭合销项，不入本表。

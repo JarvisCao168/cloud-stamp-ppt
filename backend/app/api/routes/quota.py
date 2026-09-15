@@ -82,7 +82,7 @@ async def quota_status(http_request: Request):
     # 改为按 §3.5.1 折算函数 estimate_required 对 quick/auto 场景的默认档取 1
     # （CreditPanel 展示"本次预计消耗"用；§3.4 credits.required 字段对齐 §3.5 折算口径）
     from ...core.quota import estimate_required
-    required_hint = estimate_required("quick", 0, "auto")  # 未提供 prompt 长度时按 LIGHT 档默认 1
+    required_hint = estimate_required("quick", 0, "auto")  # 仅 UI 占位（默认 LIGHT 档 1），非生成时点实际预扣值；实际 required 以 /create 入参 (mode, input_len, complexity) 实时折算为准
 
     allowed, used, limit = await check_quota(user_id)
     credit_allowed, balance, credit_used, credit_limit = await check_credits(user_id, required_hint)
