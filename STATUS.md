@@ -1,8 +1,8 @@
 # 云章PPT智能体系统 - 项目状态报告
 
 **更新日期**: 2026-09-15
-**当前阶段**: Phase 4 M1 积分制切换已合入 origin/master（`8d75d86..8b82fa1`，单 PR 7 commit 链一次推完；测试三项 T1/T2/T3 全 PASS，回归门槛 后端 17/17、Vitest 173/173、E2E 55/56 达标；M2 启动门槛已达成，@Claude 侧 M2 起草排期）
-**最新 Commit**: `8b82fa1`（v0.2.2 终审定稿：§3.3 429/402 schema 收敛为单一平铺形态 + P1-#7 时区勘误定位 + Codex E2E 断言粒度核认 + STATUS.md 背书降调） / `d0dbac3`（v0.2.1 终审 4 条 WARN 补完：#6 token 语义 / #9 snapshot 边界 / #10 last_cost_date DDL / #12 version 列 + M2 扣减 SQL）/ `2778887`（v0.2 补漏：findings #12/#13 DDL 并入 + 并发扣减方案）/ `83a7ac2`（v0.2 修订稿：并入 Hermes 组长复核意见 9 成立/2 部分 + Claude 设计审查 11 条 findings）/ `83fda71`（v0.1 新建 + STATUS.md DDL/429 口径行补录）/ `7ff2dce`（STATUS.md 测试状态块勘误 + commit 表补录）/ `72cf9cc`（补建 `docs/collab-mvp-report.md`）/ `722ebb1`（429 关闭决策同步）/ `4953829`（STATUS 对齐）/ `451e25d`（收尾：符号名/丢失判定口径对齐 + 文档清理 + 解除跟踪）/ `c466fd2`（429/quota + DB 锚定 + proxy）/ `6911a68`（协作 MVP 前端精修+测试）/ `0146a54`（SSE 后端）/ `523706a`（长文本优化）
+**当前阶段**: Phase 4 M1 积分制切换已合入 origin/master（HEAD `ba61f63`，7 commit 链 `833f0a8→ba61f63`，测试三项 T1/T2/T3 全 PASS，回归门槛 后端 36/36、Vitest 175/175、E2E 55/56 达标）；**M2 文档批 `f668144` 已本地落库（§3.5 预扣点接入设计 + §2.3 判定式文档对齐，v0.2.3，代码零行为变化）**；M2 时序锁定：① Claude 起草 ✅ → ② Codex 工程核认 + 回归预核执行中（Codex 侧 443 网络超时，回归三项预核已交付：后端 36/36 ✅ / Vitest 175/175 ✅ / E2E 55/56 ✅）→ ③ Hermes 终审 → ④ 合入 origin/master
+**最新 Commit**: `f668144`（M2 §3.5 文档批：预估扣点 `estimate_required(mode, payload_size)` + version 乐观锁 `debit_credits`/`refund_credits` + `/create` 402 分支激活 + 单测 9 组映射矩阵，M1 行为零变化） / `ba61f63`（M1 收口行落档，HEAD 推 origin/master） / `8b82fa1`（M1 7 commit 链收尾：.gitignore 追加 .tmp/） / `add780f`（get_db_sync WSL 路径修复） / `0d29d46`（routes/quota.py init_db() 同步调用修复）
 
 ## 团队配置
 
