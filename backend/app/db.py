@@ -159,8 +159,10 @@ def get_db_sync():
     """同步数据库连接（用于测试脚本）"""
     import sqlite3
     db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
-    # Windows path handling for sqlite3
-    if db_path.startswith("/"):
+    # 路径保持操作系统原样：Windows 下 D:/... 直接可用；WSL 下锚定后的
+    # /mnt/d/... 以 / 开头，lstrip 会误剥成相对路径导致 sqlite3 打不开（M1 修复）。
+    # Windows 侧路径（无 //mnt/ 前缀）不受影响——startswith("/mnt/") 为 False。
+    if not db_path.startswith("/mnt/") and db_path.startswith("/"):
         db_path = db_path.lstrip("/")
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
