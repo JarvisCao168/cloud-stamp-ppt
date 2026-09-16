@@ -248,7 +248,7 @@ def test_create_402_insufficient_credits_intercept():
     免费额度耗尽（used≥limit）且 0 < balance < required → 402 拦截式，
     code=insufficient_credits（单锚 :778），credits 载荷 = 当前余额。
     驱动口径：check_quota→allowed=False；check_credits→balance=3；
-    "quick" 模式输入 5000 字 → estimate_required=5（HEAVY 档），0 < 3 < 5 命中 402。
+    "quick" 模式输入 5000 字 → estimate_required=6（HEAVY 档，M6-B ×1.2 后 5→6），0 < 3 < 6 命中 402。
     行号勘误补录：旧 docstring 误引 generation.py:690-701/:705-711 系 2a7a5bd 前旧值，
     现值 :761-772/:776-782（+71 偏移），与 m3-a-b v0.9 §九 勘误行 #16 对齐。
     """
@@ -258,7 +258,7 @@ def test_create_402_insufficient_credits_intercept():
         return (False, 10, 10)  # 免费额度耗尽 → allowed=False
 
     async def _mock_check_credits(user_id, required=0):
-        return (False, 3, 10, 10)  # balance=3，3 < required=5 → 402（非 429）
+        return (False, 3, 10, 10)  # balance=3，3 < required=6（M6-B 后 5→6）→ 402（非 429）
 
     with patch.object(generation, "check_quota", new=_mock_check_quota), \
          patch.object(generation, "check_credits", new=_mock_check_credits), \
@@ -286,7 +286,7 @@ def test_create_debit_fail_fallback_402():
     进入预扣门控（:788，required>0 且 not allowed），debit_credits 竞态窗口
     扣减失败（余额不足）→ (False, 0) → 兜底 402（balance 记 0）。
     驱动口径：check_quota→allowed=False；check_credits→balance=10；
-    "quick"×5000 字 → required=5，10 ≥ 5 跳过 402 拦截；debit_credits mock → (False, 0)。
+    "quick"×5000 字 → required=6（M6-B ×1.2 后 5→6），10 ≥ 6 跳过 402 拦截；debit_credits mock → (False, 0)。
     """
     _reset_state()
 
@@ -357,8 +357,8 @@ def test_create_debit_fail_conflict_503():
 def test_create_402_collaborative_mode_intercept():
     """
     B 协作/付费 402 拦截路径实码（M5 任务 B）：
-    mode=collaborative + 5000 字 → estimate_required=5（M5 起协作/付费按 input_len 档位折算，不再固定 0）。
-    驱动口径：check_quota→allowed=False（免费额度耗尽）；check_credits→balance=3 < required=5 → 402 拦截式命中。
+    mode=collaborative + 5000 字 → estimate_required=6（M5 起按 input_len 档位折算；M6-B ×1.2 后 5→6）。
+    驱动口径：check_quota→allowed=False（免费额度耗尽）；check_credits→balance=3 < required=6 → 402 拦截式命中。
     验证 M5 行为冻结解除后 402 拦截路径对协作/付费模式实码可达。
     """
     _reset_state()
