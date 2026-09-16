@@ -91,11 +91,11 @@ B 案 3 个新增事件使用**独立 `event` 命名空间**，不复用 `genera
 
 ### 5.1 429 / 402 路径分离（B 线风险清单须标注，@Codex 合并排期并入）
 
-- **429 分支属 `check_quota` 免费额度耗尽路径**（`backend/app/core/quota.py:262` 函数起点实测）：稳态唯一触发条件 = `used ≥ limit`（当日免费额度耗尽）**且** `balance = 0`，`code=daily_free_quota_exceeded`（§3.3 定稿 schema，`phase4-plan.md` §3.5.4 四态表 429 行）；
+- **429 分支属 `check_quota` 免费额度耗尽路径**（`backend/app/core/quota.py:262` 函数起点，code 实码行 = `:219` 内——`daily_free_quota_exceeded` 于 `check_quota` 耗尽分支落码）：稳态唯一触发条件 = `used ≥ limit`（当日免费额度耗尽）**且** `balance = 0`，`code=daily_free_quota_exceeded`（§3.3 定稿 schema，`phase4-plan.md` §3.5.4 四态表 429 行）；
 - **402 属 `check_credits` 积分余额不足路径**（`backend/app/core/quota.py:214` 函数起点实测）：`used ≥ limit` 且 `0 ≤ balance < required`，`code=insufficient_credits`；503 属 `debit_credits` 版本冲突 3 次（`(False, -2)`）；
 - B 线 presence 事件（`required=0`，不入计费折算域）**不经 429/402 拦截域**——M4 落码若观察到 presence 事件关联 4xx/429 响应，按 bug 路径排查（定位是否误入 `/create` 计费域），不回改协议；
 - 两条路径的响应 schema 平铺顶层 `code` 形态（§3.3 定稿）M4 内零改动；
-- **判定函数归属写死（@Hermes 终审裁定 ⑤，随 M3 收口 commit 强化标注落库）**：429 协议侧分支属 `check_quota` 免费额度耗尽路径（code=`daily_free_quota_exceeded`，判定函数 `quota.py:262`，分支体 `generation.py:690-701`）；402 协议侧分支属 `check_credits` 积分余额不足路径（code=`insufficient_credits`，判定函数 `quota.py:214`，分支体 `generation.py:705-711`）；二者判定互斥零交叉（429 = `balance == 0`，402 = `0 < balance < required`）。**M4 落码时若误改 `generation.py:690-701`（429 分支）或 `:705-711`（402 分支）任一行为跨判定函数归属改动（如将 `check_credits` 判定逻辑挪入 429 分支或反之），PR 打回。**
+- **判定函数归属写死（@Hermes 终审裁定 ⑤，随 M3 收口 commit 强化标注落库）**：429 协议侧分支属 `check_quota` 免费额度耗尽路径（code=`daily_free_quota_exceeded`，实码行 = `generation.py:768`（429 分支体 `:761-772` 内））；402 协议侧分支属 `check_credits` 积分余额不足路径（code=`insufficient_credits`，实码行 = `generation.py:778`（402 分支体 `:776-782` 内））；二者判定互斥零交叉（429 = `balance == 0`，402 = `0 < balance < required`）。**M4 落码时若误改 `generation.py:761-772`（429 分支）或 `:776-782`（402 分支）任一行为跨判定函数归属改动（如将 `check_credits` 判定逻辑挪入 429 分支或反之），PR 打回。** 旧引 `:690-701` / `:705-711` / `:262` / `:214` 随 `2a7a5bd` 偏移作废，勘误登记见 §九-补。
 
 ### 5.2 基座声明
 
@@ -157,7 +157,7 @@ B 案 3 个新增事件使用**独立 `event` 命名空间**，不复用 `genera
 | 注 1（回滚项） | §四.4 | 台账漂移行号 `:273`（check_quota COUNT）/ `:248`（check_credits COUNT）/ `:205`（get_quota_status_sync COUNT） | @Codex 核认报告引用 `:206/:249/:274`，v0.3 一度据此落改；**@Hermes M3 终审裁定（2026-09-16）：`:206/:249/:274` 系参数行（`user_id, since`）误引，非 COUNT 字面量行——`HEAD bcd202c` 工作树直读实测 = `:205`（`get_quota_status_sync`）/ `:248`（`check_credits`）/ `:273`（`check_quota`），SQL 字符串字面量行口径（本稿计数口径基准行 = SQL 字符串字面量所在行，与 @Codex 报告所引参数行偏差 −1），v0.2 原值正确，v0.3 落改作废回滚；「台账漂移 +1 行」结论一并作废** | §四.4 口径行回滚为 `:205/:248/:273`（SQL 字面量行口径），v0.3 误引 `:206/:249/:274` 作废仅作版本对照保留 |
 | 注 2 | §四.1 | 「`generation.py:685` `estimate_required(request.mode, ...)` 调用点」 | `:685` 即调用点（`required = estimate_required(request.mode, len(request.user_input or ""), complexity)`，@Codex 核认 ✅）；函数定义在 `quota.py:23`——v0.2 措辞「调用点」指向定义处系笔误 | §四.1 勘误为「调用点 = `generation.py:685`，函数定义 = `quota.py:23`」（保留，M3 收口裁定 ✅） |
 | 注 3 | §四.2 | 单测锚点 `test_quota_m2.py:99` | 实测 `:99` collaborative → 0 + `:100` full_control → 0，双行锚点（R6 风险项「`full_control` 同路径」实码验证点） | §四.2 补 `:99-100` 双行锚点 + `full_control` 同路径注记（保留，M3 收口裁定 ✅） |
-| 注 4（强化项，@Hermes 终审裁定 ⑤） | §5.1 | 429/402 路径分离标注（判定函数归属未写死） | **429 协议侧分支属 `check_quota` 免费额度耗尽路径**（code=`daily_free_quota_exceeded`，判定函数 `quota.py:262`，分支体 `generation.py:690-701`）；**402 属 `check_credits` 积分余额不足路径**（code=`insufficient_credits`，判定函数 `quota.py:214`，分支体 `generation.py:705-711`）；判定互斥零交叉（429 = `balance == 0`，402 = `0 < balance < required`） | §5.1 判定函数归属写死 + M4 跨归属改动即 PR 打回声明（本 note 落改处 = 强化标注落库点，零代码变更） |
+| 注 4（强化项，@Hermes 终审裁定 ⑤） | §5.1 | 429/402 路径分离标注（判定函数归属未写死） | **429 协议侧分支属 `check_quota` 免费额度耗尽路径**（code=`daily_free_quota_exceeded`，判定函数 `quota.py:219`（`daily_free_quota_exceeded` 实码行；L87 原引 `:262` 系 `check_quota` def 行，随 `2a7a5bd` 漂移，M4 终审裁定更正为实码行），分支体 `generation.py:761-772`）；**402 属 `check_credits` 积分余额不足路径**（code=`insufficient_credits`，`insufficient_credits` 实码行 = `generation.py:778`（分支体 `:776-782` 内），L87 原引 `:214` 作废，M4 终审裁定更正为实码行）；判定互斥零交叉（429 = `balance == 0`，402 = `0 < balance < required`） | §5.1 判定函数归属写死 + M4 跨归属改动即 PR 打回声明（本 note 落改处 = 强化标注落库点，零代码变更） |
 
 > **注 1 补记（偏差归因，供 M4 引用）**：@Codex 核认报告引用了 `:206/:249/:274`（COUNT 语句参数行），本稿 v0.3 据此落改 §四.4；@Hermes M3 终审复审以 HEAD `bcd202c` 工作树直读裁定口径统一取 **SQL 字符串字面量行**（`"SELECT COUNT(*) AS cnt FROM usage_log WHERE user_id = ? AND generated_at >= ?"` 所在行）：`:205`（`get_quota_status_sync`）/ `:248`（`check_credits`）/ `:273`（`check_quota`），与 @Codex 报告所引参数行偏差 −1，v0.2 原值即为终审基准。
 
@@ -171,4 +171,4 @@ B 案 3 个新增事件使用**独立 `event` 命名空间**，不复用 `genera
 | ② | §一 1.2 `presence_snapshot` 行 | 首帧设计维持 v0.3 零改动 | 本行不改动（`{session_id, viewers: [{viewer_id, last_seen_ts}], ts}` 维持 v0.3 原 schema）；勘误登记于本表 |
 | ③ | §二 规则 3 | 客户端降级逻辑强化 | §二 规则 3 末尾补「v0.4 ③ 强化」句：缺失 `user_id` → 面板渲染「未上报」，禁止默认渲染 `1` |
 | ④ | `STATUS.md` BOM 口径行 | BOM 口径行（随 `a2134ef` 入库：无 BOM 属历史既成状态，不追溯补 BOM，STATUS.md 须登记差异）同步登记进 §八 修正登记表 | §八 追加第 7 条（BOM 口径行登记） |
-| ⑤ | §5.1 429/402 分离标注 | 维持现状 | 本行不改动（v0.3 强化项已落库，§九 注 4）；勘误登记于本表 |
+| ⑤ | §5.1 429/402 分离标注 | 维持现状 | 本行不改动（v0.3 强化项已落库，§九 注 4）；勘误登记于本表。**注 4 行号漂移补录（随 ⑤ 勘误行一并登记）**：注 4 原文引用的分支体 `generation.py:690-701` / `:705-711` 与判定函数 `quota.py:262` / `:214` 系 `2a7a5bd` 前旧值，M4 终审裁定更正为实码行——429 code 实码行 = `generation.py:768`（分支体 `:761-772`）/ 402 code 实码行 = `generation.py:778`（分支体 `:776-782`）；§5.1 正文已同步落改 |
