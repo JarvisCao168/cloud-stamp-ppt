@@ -294,7 +294,7 @@ def test_create_debit_fail_fallback_402():
         return (False, 10, 10)  # 免费额度耗尽 → allowed=False
 
     async def _mock_check_credits(user_id, required=0):
-        return (True, 10, 10, 10)  # balance=10 ≥ required=5 → 跳过 402 拦截式
+        return (True, 10, 10, 10)  # balance=10 ≥ required=6（M6-B ×1.2 后 5→6）→ 跳过 402 拦截式
 
     async def _mock_reserve_credit(user_id, required=0, mode="auto", session_id=None):
         return (False, 0)  # 竞态窗口内余额不足 → 兜底 402
@@ -321,7 +321,7 @@ def test_create_debit_fail_fallback_402():
 def test_create_debit_fail_conflict_503():
     """
     B3 判定函数 ④（debit_fail 版本冲突 503，generation.py:793-795，code 行 :796）：
-    同 ③ 驱动口径（free 耗尽 + balance=10 ≥ required=5 跳过 402 拦截），
+    同 ③ 驱动口径（free 耗尽 + balance=10 ≥ required=6（M6-B ×1.2 后 5→6）跳过 402 拦截），
     debit_credits 乐观锁 3 次重试仍冲突 → (False, -2) → 503 服务不可用
     （非用户侧错误，与 402 判定分离）。
     """
@@ -331,7 +331,7 @@ def test_create_debit_fail_conflict_503():
         return (False, 10, 10)  # 免费额度耗尽 → allowed=False
 
     async def _mock_check_credits(user_id, required=0):
-        return (True, 10, 10, 10)  # balance=10 ≥ required=5 → 跳过 402 拦截式
+        return (True, 10, 10, 10)  # balance=10 ≥ required=6（M6-B ×1.2 后 5→6）→ 跳过 402 拦截式
 
     async def _mock_reserve_credit(user_id, required=0, mode="auto", session_id=None):
         return (False, -2)  # 版本冲突 3 次 → 503
@@ -367,7 +367,7 @@ def test_create_402_collaborative_mode_intercept():
         return (False, 10, 10)  # 免费额度耗尽 → allowed=False
 
     async def _mock_check_credits(user_id, required=0):
-        return (False, 3, 10, 10)  # balance=3 < required=5 → 402（非 429）
+        return (False, 3, 10, 10)  # balance=3 < required=6（M6-B ×1.2 后 5→6）→ 402（非 429）
 
     with patch.object(generation, "check_quota", new=_mock_check_quota), \
          patch.object(generation, "check_credits", new=_mock_check_credits), \
@@ -376,7 +376,7 @@ def test_create_402_collaborative_mode_intercept():
         resp = client.post(
             "/api/generation/create",
             json={
-                "user_input": "字" * 5000,  # collaborative×5000 字 → required=5（M5 档位折算）
+                "user_input": "字" * 5000,  # collaborative×5000 字 → required=6（M6-B ×1.2 后 5→6）
                 "mode": "collaborative",
                 "user_id": "anon-collab-402",
             },
