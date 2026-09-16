@@ -276,7 +276,7 @@ def test_create_402_insufficient_credits_intercept():
         body = resp.json()
         assert body["code"] == "insufficient_credits"  # 拦截式单锚 :778
         assert body["credits"]["balance"] == 3
-        assert body["credits"]["required"] == 5  # required 由 estimate_required 折算
+        assert body["credits"]["required"] == 6  # M6-B：×1.2 档位折算后 required=6（M5 旧基线 5）
 
 
 def test_create_debit_fail_fallback_402():
@@ -385,4 +385,4 @@ def test_create_402_collaborative_mode_intercept():
         body = resp.json()
         assert body["code"] == "insufficient_credits"  # 402 code 行 :778
         assert body["credits"]["balance"] == 3
-        assert body["credits"]["required"] == 5  # M5：协作模式 required=5（非 M4 的 0）
+        assert body["credits"]["required"] == 6  # M6-B：×1.2 档位折算后 required=6（M5 协作旧基线 5）
