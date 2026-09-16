@@ -49,6 +49,26 @@ def estimate_required(mode: str, input_len: int, complexity: str = "auto") -> in
     return 8
 
 
+def reserve_credit(
+    user_id: str,
+    required: int = 0,
+    mode: str = "auto",
+    session_id: Optional[str] = None,
+) -> Tuple[bool, int]:
+    """
+    B1 预扣点（M4 协作/付费生成入口）：
+
+    - mode="collaborative"：按 required 预扣积分；required<=0 时直接返回 (True, 0)，
+      不触碰 DB，与 estimate_required 对 checkpoint 暂停态返回 0 的语义对齐。
+    - mode="full_control"：同样按 required 预扣；unknown mode 兜底保持 required 原样，
+      由 estimate_required 或上游计费折算负责决定 required 是否为 0。
+
+    实现复用 debit_credits 的乐观锁扣减与流水写入，不改变三条硬约束：
+    quota.py:23 函数体/签名、quota.py:57-107 乐观锁结构、record_usage INSERT OR REPLACE。
+    """
+    return debit_credits(user_id, required, session_id=session_id, reason=f"gen_{mode}")
+
+
 def _now_utc_iso() -> str:
     """UTC ISO 时间戳（流水/updated_at 写入口径，与 reset_at 同 UTC 时区）"""
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")

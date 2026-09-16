@@ -25,6 +25,7 @@ from app.core.quota import (
     debit_credits,
     refund_credits,
     update_credit_ledger_session_id,
+    reserve_credit,
 )
 from app.core.config import settings
 from app.db import SCHEMA_SQL
@@ -345,3 +346,65 @@ def test_debit_concurrent_true_race():
         # 失败方返回当前余额 10（≥0，402 语义）
         fail_ret = results[0][1] if not results[0][0] else results[1][1]
         assert fail_ret >= 0, f"失败方返回 {fail_ret}，应为当前余额（≥0）"
+
+
+# ── B1 reserve_credit 回归（M4 协作/付费预扣点）────────────────────────────
+# 单测锚点 test_quota_m2.py:99-100 对应 estimate_required 的 collaborative/full_control 分支：
+# 见上方 test_estimate_required_matrix 中
+#   assert estimate_required("collaborative", 5000, "auto") == 0
+#   assert estimate_required("full_control", 5000, "auto") == 0
+
+def test_reserve_credit_zero_required_no_db_touch():
+    """B1 required=0 → (True, 0)，不触碰 DB（429/402 零交叉，与 M1 required=0 门控等价）"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = _make_test_db(tmpdir)
+
+        with patch.object(settings, "database_url", f"sqlite+aiosqlite:///{db_path}"):
+            ok, returned = asyncio.run(reserve_credit("user-reserve-zero", 0, mode="collaborative"))
+            assert ok is True
+            assert returned == 0
+            assert _read_balance(db_path, "user-reserve-zero") is None
+
+
+def test_reserve_credit_collaborative_sufficient():
+    """B1 mode="collaborative" 余额充足 → 成功预扣 + 流水 reason=gen_collaborative + version+1"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = _make_test_db(tmpdir)
+        _seed_credits(db_path, "user-reserve-ok", balance=100)
+
+        with patch.object(settings, "database_url", f"sqlite+aiosqlite:///{db_path}"):
+            ok, nb = asyncio.run(reserve_credit("user-reserve-ok", 5, mode="collaborative", session_id="sess-b1"))
+            assert ok is True
+            assert nb == 95
+            assert _read_balance(db_path, "user-reserve-ok") == 95
+            assert _read_version(db_path, "user-reserve-ok") == 1
+            rows = _ledger_rows(db_path, "user-reserve-ok")
+            assert len(rows) == 1
+            assert rows[0][0] == -5
+            assert rows[0][1] == "gen_collaborative"
+            assert rows[0][2] == "sess-b1"
+
+
+def test_reserve_credit_insufficient():
+    """B1 余额不足 → (False, current_balance)，不写流水，version 不变（402 路径）"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = _make_test_db(tmpdir)
+        _seed_credits(db_path, "user-reserve-insuff", balance=3)
+
+        with patch.object(settings, "database_url", f"sqlite+aiosqlite:///{db_path}"):
+            ok, ret = asyncio.run(reserve_credit("user-reserve-insuff", 5, mode="collaborative"))
+            assert ok is False
+            assert ret == 3
+            assert len(_ledger_rows(db_path, "user-reserve-insuff")) == 0
+            assert _read_version(db_path, "user-reserve-insuff") == 0
+
+
+def test_reserve_credit_no_account_row():
+    """B1 账户行不存在 → (False, -1)，402 兜底"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = _make_test_db(tmpdir)
+
+        with patch.object(settings, "database_url", f"sqlite+aiosqlite:///{db_path}"):
+            ok, ret = asyncio.run(reserve_credit("user-reserve-missing", 5, mode="collaborative"))
+            assert ok is False
+            assert ret == -1
