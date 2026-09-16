@@ -17,7 +17,7 @@
 ## 三、硬约束（PR 打回线）
 
 - `quota.py:23` 函数体/签名、`quota.py:57-107` 乐观锁结构：任何变更即打回
-- `record_usage`（`quota.py:316-327`，生产版 `INSERT OR REPLACE`；`record_usage_sync` = `:303-313`（测试用同步版），M5 docs 勘误统一 commit）`INSERT OR REPLACE` 不改动
+- `record_usage`（`quota.py:327`，生产版 `INSERT OR REPLACE`；`record_usage_sync` = `quota.py:314`（测试用同步版），M5 docs 勘误统一 commit；前置1 勘误单 commit 行锚点核销：def 行口径原 `:316-327`/`:303-313` → 实码 `:327`/`:314`）`INSERT OR REPLACE` 不改动
 - `usage_log` 复合主键（`db.py:55`）+ 同名索引（`db.py:61`）保持现状
 - `generation.py:761-772` / `:776-782` / `:792-806` 三分支拦截式零改动
 
