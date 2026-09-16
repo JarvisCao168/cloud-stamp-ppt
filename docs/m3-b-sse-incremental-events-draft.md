@@ -91,7 +91,7 @@ B 案 3 个新增事件使用**独立 `event` 命名空间**，不复用 `genera
 
 ### 5.1 429 / 402 路径分离（B 线风险清单须标注，@Codex 合并排期并入）
 
-- **429 分支属 `check_quota` 免费额度耗尽路径**（`backend/app/core/quota.py:262` 函数起点，code 实码行 = `:219` 内——`daily_free_quota_exceeded` 于 `check_quota` 耗尽分支落码）：稳态唯一触发条件 = `used ≥ limit`（当日免费额度耗尽）**且** `balance = 0`，`code=daily_free_quota_exceeded`（§3.3 定稿 schema，`phase4-plan.md` §3.5.4 四态表 429 行）；
+- **429 分支属 `check_quota` 免费额度耗尽路径**（`backend/app/core/quota.py:262` 函数起点，B1 `bdea9bd` +20 行后现行值 code 实码行 = `:239` 内——`daily_free_quota_exceeded` 于 `check_quota` 耗尽分支落码；`:219` 为 `d56b8ae` 勘误中间值，仅作版本对照）：稳态唯一触发条件 = `used ≥ limit`（当日免费额度耗尽）**且** `balance = 0`，`code=daily_free_quota_exceeded`（§3.3 定稿 schema，`phase4-plan.md` §3.5.4 四态表 429 行）；
 - **402 属 `check_credits` 积分余额不足路径**（`backend/app/core/quota.py:214` 函数起点实测）：`used ≥ limit` 且 `0 ≤ balance < required`，`code=insufficient_credits`；503 属 `debit_credits` 版本冲突 3 次（`(False, -2)`）；
 - B 线 presence 事件（`required=0`，不入计费折算域）**不经 429/402 拦截域**——M4 落码若观察到 presence 事件关联 4xx/429 响应，按 bug 路径排查（定位是否误入 `/create` 计费域），不回改协议；
 - 两条路径的响应 schema 平铺顶层 `code` 形态（§3.3 定稿）M4 内零改动；

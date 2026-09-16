@@ -30,7 +30,7 @@
 
 | 断言 | 实码直读 | 结果 |
 |---|---|---|
-| `daily_free_quota_exceeded` 实码行 | `generation.py:768`（`check_quota` def 行 `:262`，L44 原误引 def 行；口径基准 `quota.py:219` 注释行） | ✅ 与 `d56b8ae` 勘误一致 |
+| `daily_free_quota_exceeded` 实码行 | `generation.py:768`（`check_quota` def 行 `:262`，L44 原误引 def 行；口径基准 `quota.py:219` 注释行，B1 `bdea9bd` +20 行后现行值 = `quota.py:239`，429 双锚 = `quota.py:239`（注释注记）+ `generation.py:768`（code 行）） | ✅ 与 `d56b8ae` 勘误一致，429 锚点随 B1 漂移至 `:239` |
 | `insufficient_credits` 实码行 | `generation.py:778`（拦截式），`:802`（debit_fail 兜底，另处） | ✅ 与 `d56b8ae` 勘误一致 |
 | 429/402/debit_fail 三分支行号 | `:761-772` / `:776-782` / `:792-806` | ✅ 零漂移 |
 | 单测锚点 | `test_quota_m2.py:99-100` | ✅ 与锚点一致 |
