@@ -1,3 +1,6 @@
+# Database (runtime state, not version-controlled)
+backend/yunzhang.db
+
 # Database backups
 backend/yunzhang.db.bak
 *.db.bak
