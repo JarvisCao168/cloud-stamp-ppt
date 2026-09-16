@@ -125,7 +125,7 @@ B 案 3 个新增事件使用**独立 `event` 命名空间**，不复用 `genera
 
 | # | v0.1 位置 | v0.1 原文 | 实码核验结果（HEAD `bcd202c`） | v0.2 落改 |
 |---|-----------|----------|-------------------------------|-----------|
-| 1 | §四.4 | `quota.py:205/:248/:273`「三处统一」——其中 `:273` 标作 `estimate_required` | `estimate_required`（`quota.py:23-49`）**无计数行**；`:273` 实为 `check_quota`（函数 `:262-280`）内 `COUNT(*)` 语句；三处 = `:205`（`get_quota_status_sync`）/ `:248`（`check_credits`）/ `:273`（`check_quota`），口径本身三处统一无误 | §四.4 标注修正 + 注记「`:273` 误标 `estimate_required` 已勘误」 |
+| 1 | §四.4 | `quota.py:205/:248/:273`「三处统一」——其中 `:273` 标作 `estimate_required` | `estimate_required`（`quota.py:23-49`）**无计数行**；`:273` 实为 `check_quota`（函数 `:262-280`）内 `COUNT(*)` 语句；三处 = `:205`（`get_quota_status_sync`）/ `:248`（`check_credits`）/ `:273`（`check_quota`），口径本身三处统一无误 | §四.4 标注修正 + 注记「`:273` 误标 `estimate_required` 已勘误」（尾注：该条 v0.3 曾误引 `:206/:249/:274` 参数行落改，后经 @Hermes 终审裁定回滚——已回滚，v0.2 原值 `:205/:248/:273` 即终审基准，详见 §九 注 1（`:155`）及注 1 补记（`:160`）） |
 | 2 | §三 S1 | `generation.py:53`（单行） | `collab_publish` 定义实际 `:53`，函数体至 `:58` | 修正为 `:53-58`（完整路径 `backend/app/api/routes/generation.py`） |
 | 3 | §三 S1 | join 回放路径 `generation.py:94-102` | `event_stream` 内回放循环实际 `:93-95`（`for entry in _collab_event_log...`） | 修正为 `:93-95` |
 | 4 | §四.1 | `/create` 路由 `generation.py:685` | `backend/app/api/routes/generation.py:685` `estimate_required(request.mode, len(request.user_input or ""), complexity)` ✅ 行号无误，补完整路径 | 补完整路径，行号不变 |
