@@ -9,7 +9,7 @@
 #   多 join 收敛 viewers_total / 429 路径零回归 /
 #   判定函数三分支骨架 402 拦截式 - debit_fail 兜底 402 - debit_fail 503，
 #   行引 generation.py:761/:776/:792）
-# - test_quota_m2.py:99-100 双行锚点回归（collaborative / full_control 同落 0，
+# - test_quota_m2.py:100-101 双行锚点回归（collaborative / full_control 同落 0，M5 docs 勘误统一 commit：三方历史锚记 :99/:100 漂移至现行 :100/:101）
 #   随本批次全量回归，验证「整篇计一次」不变）
 #
 # 驱动口径说明：SSE 路由（event_stream 生成器）以 asyncio.Task 驱动真实路由函数，

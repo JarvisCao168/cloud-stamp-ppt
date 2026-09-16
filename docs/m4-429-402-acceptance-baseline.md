@@ -17,13 +17,13 @@
 ## 三、硬约束（PR 打回线）
 
 - `quota.py:23` 函数体/签名、`quota.py:57-107` 乐观锁结构：任何变更即打回
-- `record_usage`（`quota.py:296-307`）`INSERT OR REPLACE` 不改动
+- `record_usage`（`quota.py:316-327`，生产版 `INSERT OR REPLACE`；`record_usage_sync` = `:303-313`（测试用同步版），M5 docs 勘误统一 commit）`INSERT OR REPLACE` 不改动
 - `usage_log` 复合主键（`db.py:55`）+ 同名索引（`db.py:61`）保持现状
 - `generation.py:761-772` / `:776-782` / `:792-806` 三分支拦截式零改动
 
 ## 四、单测锚点
 
-- `test_quota_m2.py:99`（collaborative）/ `:100`（full_control）→ `estimate_required(...) == 0` 全绿
+- `test_quota_m2.py:100`（collaborative）/ `:101`（full_control）→ `estimate_required(...) == 0` 全绿（M5 docs 勘误统一 commit：三方历史锚记 `:99`/`:100` 漂移至 `:100`/`:101`，现场实码 L100/L101 核认）
 - 429/402 零交叉断言：`daily_free_quota_exceeded` 仅出现于 429 域，`insufficient_credits` 拦截式仅出现于 402 域（`:778`），debit_fail 兜底 402/503 归 `:792-806`
 
 ## 五、实码核验记录（本 commit 时点，2026-09-16）
@@ -33,7 +33,7 @@
 | `daily_free_quota_exceeded` 实码行 | `generation.py:768`（`check_quota` def 行 `:262`，L44 原误引 def 行；口径基准 `quota.py:219` 注释行，B1 `bdea9bd` +20 行后现行值 = `quota.py:239`，429 双锚 = `quota.py:239`（注释注记）+ `generation.py:768`（code 行）） | ✅ 与 `d56b8ae` 勘误一致，429 锚点随 B1 漂移至 `:239` |
 | `insufficient_credits` 实码行 | `generation.py:778`（拦截式），`:802`（debit_fail 兜底，另处） | ✅ 与 `d56b8ae` 勘误一致 |
 | 429/402/debit_fail 三分支行号 | `:761-772` / `:776-782` / `:792-806` | ✅ 零漂移 |
-| 单测锚点 | `test_quota_m2.py:99-100` | ✅ 与锚点一致 |
+| 单测锚点 | `test_quota_m2.py:100-101` | ✅ 与锚点一致 |
 
 ## 六、并入声明
 
