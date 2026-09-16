@@ -408,3 +408,44 @@ def test_reserve_credit_no_account_row():
             ok, ret = asyncio.run(reserve_credit("user-reserve-missing", 5, mode="collaborative"))
             assert ok is False
             assert ret == -1
+
+
+# ── M5 任务A：B1 调用侧 reserve_credit 生成入口预扣路径验证 ────────────────
+
+def test_reserve_credit_quick_mode_reason_semantics():
+    """
+    M5 任务A：generation.py:789 调用侧接入后，reserve_credit mode="quick"
+    的流水 reason 应为 "gen_quick"（与 M2 原 debit_credits reason=f"gen_{complexity}" 语义对齐）。
+    验证：mode="quick" 余额充足 → 成功预扣 + 流水 reason=gen_quick + version+1
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = _make_test_db(tmpdir)
+        _seed_credits(db_path, "user-quick-mode", balance=100)
+
+        with patch.object(settings, "database_url", f"sqlite+aiosqlite:///{db_path}"):
+            ok, nb = asyncio.run(reserve_credit("user-quick-mode", 5, mode="quick"))
+            assert ok is True
+            assert nb == 95
+            assert _read_balance(db_path, "user-quick-mode") == 95
+            assert _read_version(db_path, "user-quick-mode") == 1
+            rows = _ledger_rows(db_path, "user-quick-mode")
+            assert len(rows) == 1
+            assert rows[0][0] == -5
+            assert rows[0][1] == "gen_quick"
+
+
+def test_reserve_credit_full_control_mode_zero_required():
+    """
+    M5 任务A：full_control 模式 estimate_required 返回 0，reserve_credit required=0
+    → 直接 (True, 0)，不触碰 DB（与 B1 回归组 1 一致，验证生成入口 full_control 路径）。
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = _make_test_db(tmpdir)
+        _seed_credits(db_path, "user-full-ctrl", balance=100)
+
+        with patch.object(settings, "database_url", f"sqlite+aiosqlite:///{db_path}"):
+            ok, returned = asyncio.run(reserve_credit("user-full-ctrl", 0, mode="full_control"))
+            assert ok is True
+            assert returned == 0
+            # 余额未变（未触碰 DB 扣减）
+            assert _read_balance(db_path, "user-full-ctrl") == 100

@@ -238,8 +238,8 @@ def test_presence_429_path_zero_regression():
 # 驱动口径同 429 回归用例：patch generation 模块内判定函数 + TestClient 直驱 /create。
 # 三分支拦截式判定零改动回归（M4 硬约束③，跨归属改动即 PR 打回）。
 # B1 调用侧裁定（b152568 收口 commit 确认）：generation.py 无 reserve_credit 直调，
-# 预扣经 debit_credits 调用点 :789 落地（reason=f"gen_{complexity}"）；
-# 本批以 debit_credits 回归 16 passed 为 B1 验收凭证，维持三方锁定口径不接入。
+# 预扣经 reserve_credit 调用点 :790 落地（mode=request.mode，B1 调用侧 M5 任务A 接入）；
+# 本批以 reserve_credit mock 回归 18 passed 为 B1 验收凭证。
 
 
 def test_create_402_insufficient_credits_intercept():
@@ -296,12 +296,12 @@ def test_create_debit_fail_fallback_402():
     async def _mock_check_credits(user_id, required=0):
         return (True, 10, 10, 10)  # balance=10 ≥ required=5 → 跳过 402 拦截式
 
-    async def _mock_debit_credits(user_id, required, session_id=None, reason="gen"):
+    async def _mock_reserve_credit(user_id, required=0, mode="auto", session_id=None):
         return (False, 0)  # 竞态窗口内余额不足 → 兜底 402
 
     with patch.object(generation, "check_quota", new=_mock_check_quota), \
          patch.object(generation, "check_credits", new=_mock_check_credits), \
-         patch.object(generation, "debit_credits", new=_mock_debit_credits), \
+         patch.object(generation, "reserve_credit", new=_mock_reserve_credit), \
          patch.object(generation, "record_usage", new=lambda *a, **k: None), \
          TestClient(app) as client:
         resp = client.post(
@@ -333,12 +333,12 @@ def test_create_debit_fail_conflict_503():
     async def _mock_check_credits(user_id, required=0):
         return (True, 10, 10, 10)  # balance=10 ≥ required=5 → 跳过 402 拦截式
 
-    async def _mock_debit_credits(user_id, required, session_id=None, reason="gen"):
+    async def _mock_reserve_credit(user_id, required=0, mode="auto", session_id=None):
         return (False, -2)  # 版本冲突 3 次 → 503
 
     with patch.object(generation, "check_quota", new=_mock_check_quota), \
          patch.object(generation, "check_credits", new=_mock_check_credits), \
-         patch.object(generation, "debit_credits", new=_mock_debit_credits), \
+         patch.object(generation, "reserve_credit", new=_mock_reserve_credit), \
          patch.object(generation, "record_usage", new=lambda *a, **k: None), \
          TestClient(app) as client:
         resp = client.post(

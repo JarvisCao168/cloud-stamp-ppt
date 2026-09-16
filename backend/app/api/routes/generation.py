@@ -25,6 +25,7 @@ from ...core.quota import (
     debit_credits,
     refund_credits,
     update_credit_ledger_session_id,
+    reserve_credit,
     _now_utc_iso,
 )
 from ...core.config import settings
@@ -786,7 +787,7 @@ async def create_generation(request: GenerationRequest, http_request: Request):
     debit_fail: Optional[int] = None
     debit_ts = _now_utc_iso() if required > 0 else ""
     if required > 0 and not allowed:
-        debit_ok, new_balance = await debit_credits(quota_user_id, required, reason=f"gen_{complexity}")
+        debit_ok, new_balance = await reserve_credit(quota_user_id, required, mode=request.mode)
         if not debit_ok:
             debit_fail = new_balance  # ≥0 余额不足兜底 / -1 账户行不存在 / -2 版本冲突 3 次
     if debit_fail is not None:
