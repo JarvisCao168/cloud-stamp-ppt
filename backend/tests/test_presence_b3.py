@@ -4,16 +4,18 @@
 # - 前端 Vitest 用例：__tests__/collabStream.test.ts「B 线 presence 事件」节 4 项
 #   （viewer_joined 更新 viewersTotal / viewer_left 更新 / presence_snapshot 全量收敛 +
 #   未知事件名静默忽略回归面 0）
-# - 后端 pytest 用例：本文件 4 项
+# - 后端 pytest 用例：本文件 7 项
 #   （join 广播 viewer_joined + presence_snapshot / leave 广播 viewer_left /
-#   多 join 收敛 viewers_total / 既有 429 路径零回归）
+#   多 join 收敛 viewers_total / 429 路径零回归 /
+#   判定函数三分支骨架 402 拦截式 - debit_fail 兜底 402 - debit_fail 503，
+#   行引 generation.py:761/:776/:792）
 # - test_quota_m2.py:99-100 双行锚点回归（collaborative / full_control 同落 0，
 #   随本批次全量回归，验证「整篇计一次」不变）
 #
 # 驱动口径说明：SSE 路由（event_stream 生成器）以 asyncio.Task 驱动真实路由函数，
 # 至 presence_snapshot 下发即取消任务（cancel 触发 finally -> viewer_left 广播），
 # 规避 TestClient 流式读取下 30s 心跳导致的 portal 挂起。
-# 429 回归用例为同步 POST /create，经 TestClient 驱动，无挂起风险。
+# 429 回归用例与判定函数三分支骨架用例为同步 POST /create，经 TestClient 驱动，无挂起风险。
 
 
 import asyncio
@@ -194,9 +196,11 @@ def test_presence_429_path_zero_regression():
     """
     B 线 429/402 零回归（B 草案 §5.1 强化标注，M4 跨归属改动即 PR 打回）：
     presence 事件 required=0 不入计费折算域，/create 429 分支
-    （check_quota 免费额度耗尽，code=daily_free_quota_exceeded，generation.py:690-701）
+    （check_quota 免费额度耗尽，code=daily_free_quota_exceeded，generation.py:761-772，code 行 :768）
     与 402 分支（check_credits 积分余额不足，code=insufficient_credits，
-    generation.py:705-711）判定互斥零交叉，本批未触碰任一分支一行 -> 429 稳态唯一路径不变
+    generation.py:776-782，code 行 :778）判定互斥零交叉，本批未触碰任一分支一行 -> 429 稳态唯一路径不变
+    行号勘误补录：旧 docstring 误引 generation.py:690-701/:705-711 系 2a7a5bd 前旧值（+71 偏移前），
+    现值 :761-772/:776-782，与 m3-a-b v0.9 §九 勘误行 #16 对齐
     """
     _reset_state()
 
@@ -224,3 +228,127 @@ def test_presence_429_path_zero_regression():
         assert body["usage"]["used"] == 10
         assert body["usage"]["limit"] == 10
         assert "reset_at" in body["usage"]
+
+
+# ── B3 判定函数三分支单测骨架（开笔令口径，提交点 b152568）────────────────────────
+# 行引基准：m3-a-b-engineering-schedule-risk.md v0.9 §九 勘误行 #16（b152568 收口 commit 锁档值）
+#   429 分支体  generation.py:761-772（code 行 :768）
+#   402 分支体  generation.py:776-782（code 行 :778）
+#   debit_fail  generation.py:792-806（-2 → 503 :793-795，兜底 402 :801-806）
+# 驱动口径同 429 回归用例：patch generation 模块内判定函数 + TestClient 直驱 /create。
+# 三分支拦截式判定零改动回归（M4 硬约束③，跨归属改动即 PR 打回）。
+# B1 调用侧裁定（b152568 收口 commit 确认）：generation.py 无 reserve_credit 直调，
+# 预扣经 debit_credits 调用点 :789 落地（reason=f"gen_{complexity}"）；
+# 本批以 debit_credits 回归 16 passed 为 B1 验收凭证，维持三方锁定口径不接入。
+
+
+def test_create_402_insufficient_credits_intercept():
+    """
+    B3 判定函数 ②（402 拦截式，generation.py:776-782，code 行 :778）：
+    免费额度耗尽（used≥limit）且 0 < balance < required → 402 拦截式，
+    code=insufficient_credits（单锚 :778），credits 载荷 = 当前余额。
+    驱动口径：check_quota→allowed=False；check_credits→balance=3；
+    "quick" 模式输入 5000 字 → estimate_required=5（HEAVY 档），0 < 3 < 5 命中 402。
+    行号勘误补录：旧 docstring 误引 generation.py:690-701/:705-711 系 2a7a5bd 前旧值，
+    现值 :761-772/:776-782（+71 偏移），与 m3-a-b v0.9 §九 勘误行 #16 对齐。
+    """
+    _reset_state()
+
+    async def _mock_check_quota(user_id):
+        return (False, 10, 10)  # 免费额度耗尽 → allowed=False
+
+    async def _mock_check_credits(user_id, required=0):
+        return (False, 3, 10, 10)  # balance=3，3 < required=5 → 402（非 429）
+
+    with patch.object(generation, "check_quota", new=_mock_check_quota), \
+         patch.object(generation, "check_credits", new=_mock_check_credits), \
+         patch.object(generation, "record_usage", new=lambda *a, **k: None), \
+         TestClient(app) as client:
+        resp = client.post(
+            "/api/generation/create",
+            json={
+                "user_input": "字" * 5000,  # quick×5000 字 → required=5（HEAVY 档）
+                "mode": "quick",
+                "user_id": "anon-402",
+            },
+        )
+        assert resp.status_code == 402
+        body = resp.json()
+        assert body["code"] == "insufficient_credits"  # 拦截式单锚 :778
+        assert body["credits"]["balance"] == 3
+        assert body["credits"]["required"] == 5  # required 由 estimate_required 折算
+
+
+def test_create_debit_fail_fallback_402():
+    """
+    B3 判定函数 ③（debit_fail 兜底 402，generation.py:792-806，兜底 402 code 行 :802）：
+    免费额度耗尽 + balance ≥ required → 402 拦截式分支被跳过（:776 不命中），
+    进入预扣门控（:788，required>0 且 not allowed），debit_credits 竞态窗口
+    扣减失败（余额不足）→ (False, 0) → 兜底 402（balance 记 0）。
+    驱动口径：check_quota→allowed=False；check_credits→balance=10；
+    "quick"×5000 字 → required=5，10 ≥ 5 跳过 402 拦截；debit_credits mock → (False, 0)。
+    """
+    _reset_state()
+
+    async def _mock_check_quota(user_id):
+        return (False, 10, 10)  # 免费额度耗尽 → allowed=False
+
+    async def _mock_check_credits(user_id, required=0):
+        return (True, 10, 10, 10)  # balance=10 ≥ required=5 → 跳过 402 拦截式
+
+    async def _mock_debit_credits(user_id, required, session_id=None, reason="gen"):
+        return (False, 0)  # 竞态窗口内余额不足 → 兜底 402
+
+    with patch.object(generation, "check_quota", new=_mock_check_quota), \
+         patch.object(generation, "check_credits", new=_mock_check_credits), \
+         patch.object(generation, "debit_credits", new=_mock_debit_credits), \
+         patch.object(generation, "record_usage", new=lambda *a, **k: None), \
+         TestClient(app) as client:
+        resp = client.post(
+            "/api/generation/create",
+            json={
+                "user_input": "字" * 5000,  # required=5，balance=10 ≥ 5 → 进入预扣门控
+                "mode": "quick",
+                "user_id": "anon-debit-fail",
+            },
+        )
+        assert resp.status_code == 402
+        body = resp.json()
+        assert body["code"] == "insufficient_credits"  # 兜底 402 code 行 :802
+        assert body["credits"]["balance"] == 0
+
+
+def test_create_debit_fail_conflict_503():
+    """
+    B3 判定函数 ④（debit_fail 版本冲突 503，generation.py:793-795，code 行 :796）：
+    同 ③ 驱动口径（free 耗尽 + balance=10 ≥ required=5 跳过 402 拦截），
+    debit_credits 乐观锁 3 次重试仍冲突 → (False, -2) → 503 服务不可用
+    （非用户侧错误，与 402 判定分离）。
+    """
+    _reset_state()
+
+    async def _mock_check_quota(user_id):
+        return (False, 10, 10)  # 免费额度耗尽 → allowed=False
+
+    async def _mock_check_credits(user_id, required=0):
+        return (True, 10, 10, 10)  # balance=10 ≥ required=5 → 跳过 402 拦截式
+
+    async def _mock_debit_credits(user_id, required, session_id=None, reason="gen"):
+        return (False, -2)  # 版本冲突 3 次 → 503
+
+    with patch.object(generation, "check_quota", new=_mock_check_quota), \
+         patch.object(generation, "check_credits", new=_mock_check_credits), \
+         patch.object(generation, "debit_credits", new=_mock_debit_credits), \
+         patch.object(generation, "record_usage", new=lambda *a, **k: None), \
+         TestClient(app) as client:
+        resp = client.post(
+            "/api/generation/create",
+            json={
+                "user_input": "字" * 5000,  # required=5，balance=10 ≥ 5 → 进入预扣门控
+                "mode": "quick",
+                "user_id": "anon-debit-503",
+            },
+        )
+        assert resp.status_code == 503
+        body = resp.json()
+        assert body["code"] == "service_unavailable"  # 503 code 行 :796
