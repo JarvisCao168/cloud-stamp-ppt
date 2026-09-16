@@ -84,7 +84,7 @@
 | # | 位置 | 落改内容 | 依据 |
 |---|------|----------|------|
 | 1 | §三.1 R-DDL-2 | 行号漂移 +1 行结论核销——当日计数口径三处唯一基准 = `:205`（`get_quota_status_sync`）/ `:248`（`check_credits`）/ `:273`（`check_quota`），SQL 字符串字面量行口径（`git show bcd202c:` 误报偏差 −1 作废仅作版本对照保留） | @Hermes M3 终审裁定 ①（2026-09-16） |
-| 2 | §三.2 429/402 强化标注 | 判定函数归属写死——429 属 `check_quota` 免费额度耗尽路径（code=`daily_free_quota_exceeded`，`quota.py:262`，分支体 `generation.py:690-701`）；402 属 `check_credits` 积分余额不足路径（code=`insufficient_credits`，`quota.py:214`，分支体 `generation.py:705-711`）；判定互斥零交叉；M4 跨归属改动即 PR 打回 | @Hermes M3 终审裁定 ⑤（2026-09-16） |
+| 2 | §三.2 429/402 强化标注 | 判定函数归属写死——429 属 `check_quota` 免费额度耗尽路径（code=`daily_free_quota_exceeded`，`quota.py:262`，分支体 `generation.py:761-772`；402 属 `check_credits` 积分余额不足路径（code=`insufficient_credits`，`quota.py:214`，分支体 `generation.py:776-782`）；判定互斥零交叉；M4 跨归属改动即 PR 打回 | @Hermes M3 终审裁定 ⑤（2026-09-16） |
 | 3 | §三.3 R2 | 行号漂移核销标注并入 | 同 R-DDL-2 裁定 |
 | 4 | 文件头部 | 行号基准行回滚为终审基准 `:205/:248/:273` + 状态行升 v0.3 + 日期行补登记 | 上述 1-3 随组落库 |
 
