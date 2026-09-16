@@ -86,21 +86,22 @@ def test_estimate_required_matrix():
     §3.5.5 PR 1 单测组 1-6：estimate_required 6 场景覆盖
     覆盖：quick×auto（LIGHT/MEDIUM/HEAVY/HEAVY>8000 封顶）+ quick×multimodal + collaborative + full_control
     """
-    # 组 1：LIGHT（≤500 字）
-    assert estimate_required("quick", 100, "auto") == 1
-    # 组 2：MEDIUM（500 < 输入 ≤4000）
-    assert estimate_required("quick", 3000, "auto") == 3
-    # 组 3：HEAVY 基础（4000 < 输入 ≤8000）
-    assert estimate_required("quick", 5000, "auto") == 5
-    # 组 4：HEAVY >8000 字 ×1.5 封顶 = 8
-    assert estimate_required("quick", 8500, "auto") == 8
-    # 组 5：MULTIMODAL（视觉反思）
+    # 组 1：LIGHT（≤500 字；M6-B 档位公式 ×1.2 中文系数 ceiling 取整，基础 1→2）
+    assert estimate_required("quick", 100, "auto") == 2
+    # 组 2：MEDIUM（500 < 输入 ≤4000；基础 3→4）
+    assert estimate_required("quick", 3000, "auto") == 4
+    # 组 3：HEAVY 基础（4000 < 输入 ≤8000；基础 5→6）
+    assert estimate_required("quick", 5000, "auto") == 6
+    # 组 4：HEAVY >8000 字 ×1.5 封顶 = 8，M6-B ×1.2 ceiling → 10
+    assert estimate_required("quick", 8500, "auto") == 10
+    # 组 5：MULTIMODAL（视觉反思；早返 6 不经档位公式，M6-B 不受影响）
     assert estimate_required("quick", 100, "multimodal") == 6
     # 组 6：M5 协作/付费模式 402 拦截路径实码——按 input_len 档位折算，不再固定 0
-    assert estimate_required("collaborative", 5000, "auto") == 5
-    assert estimate_required("full_control", 5000, "auto") == 5
-    # 边界：空输入（len=0）→ LIGHT 最低档
-    assert estimate_required("quick", 0, "auto") == 1
+    # （M6-B 起档位公式加 ×1.2 中文系数 ceiling 取整：5→6）
+    assert estimate_required("collaborative", 5000, "auto") == 6
+    assert estimate_required("full_control", 5000, "auto") == 6
+    # 边界：空输入（len=0）→ LIGHT 最低档（基础 1→2）
+    assert estimate_required("quick", 0, "auto") == 2
 
 
 # ── 2/3. debit_credits 余额充足 / 余额不足 ────────────────────────────────────

@@ -111,7 +111,7 @@ def _mock_quota_exhausted(user_id):
 
 
 async def _mock_check_credits_402(user_id, required=0):
-    """余额 3 < required 5 → credit_allowed=False（402 拦截式域，:776-782 命中）"""
+    """余额 3 < required 6（M6-B ×1.2）→ credit_allowed=False（402 拦截式域，:776-782 命中）"""
     return (False, 3, 10, 10)
 
 
@@ -121,8 +121,9 @@ async def _mock_check_credits_402(user_id, required=0):
 
 def test_m6a_collaborative_insufficient_402_ledger_zero():
     """
-    M6-A 场景 ①：mode=collaborative + 5000 字 → estimate_required=5（M5 档位折算，
-    非 M4 冻结的 0）；余额 3 < 5 → 402 拦截式命中（generation.py:776-782）。
+    M6-A 场景 ①：mode=collaborative + 5000 字 → estimate_required=6
+    （M5 档位折算基础 5，M6-B ×1.2 中文系数 ceiling 取整 → 6，非 M4 冻结的 0）；
+    余额 3 < 6 → 402 拦截式命中（generation.py:776-782）。
     拦截在预扣门控（:789）之前，真实 reserve_credit 不被调用 →
     credit_ledger 行数 diff=0（零增量断言）。
     """
@@ -143,7 +144,7 @@ def test_m6a_collaborative_insufficient_402_ledger_zero():
             resp = client.post(
                 "/api/generation/create",
                 json={
-                    "user_input": "字" * 5000,  # collaborative×5000 字 → required=5（HEAVY 档）
+                    "user_input": "字" * 5000,  # collaborative×5000 字 → required=6（HEAVY 档 基础 5，M6-B ×1.2）
                     "mode": "collaborative",
                     "user_id": "m6a-collab-402",
                 },
@@ -153,7 +154,7 @@ def test_m6a_collaborative_insufficient_402_ledger_zero():
         body = resp.json()
         assert body["code"] == "insufficient_credits"
         assert body["credits"]["balance"] == 3
-        assert body["credits"]["required"] == 5  # M5 档位折算（M4 为 0，行为冻结已解除）
+        assert body["credits"]["required"] == 6  # M5 档位折算基础 5 + M6-B ×1.2 ceiling（M4 为 0，行为冻结已解除）
 
         # 零增量断言：拦截路径不写流水（before 恒为 0，diff 必须 = 0）
         assert before == 0
@@ -167,8 +168,8 @@ def test_m6a_collaborative_insufficient_402_ledger_zero():
 
 def test_m6a_full_control_insufficient_402_ledger_zero():
     """
-    M6-A 场景 ②：mode=full_control + 5000 字 → estimate_required=5；
-    余额 3 < 5 → 402 拦截式命中。零增量断言同场景 ①。
+    M6-A 场景 ②：mode=full_control + 5000 字 → estimate_required=6（M6-B ×1.2）；
+    余额 3 < 6 → 402 拦截式命中。零增量断言同场景 ①。
     """
     generation._collab_presence.clear()
     generation._collab_subscribers.clear()
@@ -187,7 +188,7 @@ def test_m6a_full_control_insufficient_402_ledger_zero():
             resp = client.post(
                 "/api/generation/create",
                 json={
-                    "user_input": "字" * 5000,  # full_control×5000 字 → required=5
+                    "user_input": "字" * 5000,  # full_control×5000 字 → required=6（M6-B ×1.2）
                     "mode": "full_control",
                     "user_id": "m6a-fullctrl-402",
                 },
@@ -197,7 +198,7 @@ def test_m6a_full_control_insufficient_402_ledger_zero():
         body = resp.json()
         assert body["code"] == "insufficient_credits"
         assert body["credits"]["balance"] == 3
-        assert body["credits"]["required"] == 5
+        assert body["credits"]["required"] == 6
 
         assert before == 0
         after = _count_ledger(db_path, "m6a-fullctrl-402")
@@ -219,17 +220,17 @@ async def _mock_start_generation_sufficient(request):
 
 
 async def _mock_check_credits_sufficient(user_id, required=0):
-    """余额 100 ≥ required 5 → credit_allowed=True（跳过 402 拦截式，进入预扣门控）"""
+    """余额 100 ≥ required 6（M6-B ×1.2）→ credit_allowed=True（跳过 402 拦截式，进入预扣门控）"""
     return (True, 100, 10, 10)
 
 
 def test_m6a_sufficient_pass_located_ledger_one():
     """
-    M6-A 场景 ③：免费额度耗尽（used=10/10）+ 余额 100 ≥ required=5 →
+    M6-A 场景 ③：免费额度耗尽（used=10/10）+ 余额 100 ≥ required=6（M6-B ×1.2）→
     402 拦截式不命中（:776 跳过），进入预扣门控（:789），真实 reserve_credit
-    写流水（reason=gen_quick，delta=-5，session_id 补写 m6a-ok-sess）。
+    写流水（reason=gen_quick，delta=-6，session_id 补写 m6a-ok-sess）。
     响应 200（现码同步 return GenerationResponse，非 202 queued——M6 终审勘误① 现码口径）。
-    定位式断言：WHERE user_id=? AND delta=-5 AND reason LIKE 'gen_%' AND created_at >= ?
+    定位式断言：WHERE user_id=? AND delta=-6 AND reason LIKE 'gen_%' AND created_at >= ?
     判 count==1；预写 reason='test' 旧流水（created_at=2020）被窗口过滤。
     """
     generation._collab_presence.clear()
@@ -254,7 +255,7 @@ def test_m6a_sufficient_pass_located_ledger_one():
             resp = client.post(
                 "/api/generation/create",
                 json={
-                    "user_input": "字" * 5000,  # quick×5000 字 → required=5
+                    "user_input": "字" * 5000,  # quick×5000 字 → required=6（M6-B ×1.2）
                     "mode": "quick",
                     "user_id": "m6a-ok",
                 },
@@ -265,5 +266,5 @@ def test_m6a_sufficient_pass_located_ledger_one():
         assert body["session_id"] == "m6a-ok-sess"  # 放行成功 + 流水 session_id 补写命中
 
         # 定位式断言（终锚定版）：count==1，旧流水（reason='test', 2020）被窗口过滤
-        count = _locate_ledger(db_path, "m6a-ok", required=5, since_ts=t0)
+        count = _locate_ledger(db_path, "m6a-ok", required=6, since_ts=t0)
         assert count == 1, f"定位式断言 count={count}（预期 1；旧流水须被 created_at >= {t0} 过滤）"

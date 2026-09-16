@@ -25,12 +25,21 @@ def estimate_required(mode: str, input_len: int, complexity: str = "auto") -> in
     M2 计费点折算纯函数（§3.5.1）：按 /create 请求入口的生成模式 + 输入字数 + 复杂度档位，
     折算本次应预扣的积分数 required（整数，单位=积分；整篇算一次，不按段落拆分）。
 
-    路由映射（§3.5.1 表）：
+    路由映射（§3.5.1 表，M6-B 起档位折算公式加中文 ×1.2 保守系数）：
     - mode=quick + complexity=auto：≤500 字 → 1（LIGHT）；500 < 输入 ≤4000 → 3（MEDIUM）；
       4000 < 输入 ≤8000 → 5（HEAVY）；>8000 → 8（HEAVY ×1.5 封顶，R4）
     - mode=quick + complexity=multimodal（视觉反思/多模态）→ 6（MULTIMODAL，字数档位不参与）
-    - mode=collaborative / full_control（checkpoint 暂停态，/create 不产 slides）→ 0（不计费点）
+    - mode=collaborative / full_control（M5-B 起按 input_len 档位折算，与 quick 同表，
+      不再固定 0；M5 任务 B a525605 已移除两行 `return 0`）
     - 未知 mode 兜底 → 0（宁免扣错扣，M4 运营侧再校准）
+
+    M6-B 中文系数（×1.2 保守值，落档位公式内，纯函数无副作用）：
+    - 本函数入参为 input_len（int，字符数），无字符级信息可区分中/英占比
+    - 按备案口径采用保守值 ×1.2 直接乘于档位基础值后向上取整（等价于全中文输入 ratio=1）
+      （1→2，3→4，5→6，8→10，精确 ceiling，无浮点参与：ceil(1.2×base)=base+(base+4)//5）；
+      若需按实际中文字符占比动态折算，需将入参从 input_len 改为 text（str），超出 M6-B 变更边界，不在此处实施
+    - 变更边界：仅本函数档位折算公式；check_credits / generation.py 三分支 /
+      record_usage / usage_log 主键与索引 / debit_credits 乐观锁结构 均零改动
 
     独立实现，不接 model_router 字段（§3.5.1 设计约束：model_router 只负责模型通道
     选择，不承担计费折算；§二 现状锚点 estimated_cost/estimated_tokens 字段无消费点，本函数
@@ -39,12 +48,16 @@ def estimate_required(mode: str, input_len: int, complexity: str = "auto") -> in
     if complexity == "multimodal":
         return 6
     if input_len <= 500:
-        return 1
-    if input_len <= 4000:
-        return 3
-    if input_len <= 8000:
-        return 5
-    return 8
+        base = 1
+    elif input_len <= 4000:
+        base = 3
+    elif input_len <= 8000:
+        base = 5
+    else:
+        base = 8
+    # M6-B：×1.2 中文保守系数，ceiling 取整（整数运算 ceil(6×base/5) = base + (base + 4) // 5，
+    # 无浮点参与，精确映射 1→2 / 3→4 / 5→6 / 8→10；multimodal 早返 6 不经档位公式不受影响）
+    return base + (base + 4) // 5
 
 
 def reserve_credit(
