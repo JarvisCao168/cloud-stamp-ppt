@@ -267,7 +267,7 @@ def test_create_402_insufficient_credits_intercept():
         resp = client.post(
             "/api/generation/create",
             json={
-                "user_input": "字" * 5000,  # quick×5000 字 → required=5（HEAVY 档）
+                "user_input": "字" * 5000,  # quick×5000 字 → required=6（HEAVY 档，M6-B ×1.2 后 5→6）
                 "mode": "quick",
                 "user_id": "anon-402",
             },
@@ -307,7 +307,7 @@ def test_create_debit_fail_fallback_402():
         resp = client.post(
             "/api/generation/create",
             json={
-                "user_input": "字" * 5000,  # required=5，balance=10 ≥ 5 → 进入预扣门控
+                "user_input": "字" * 5000,  # quick×5000 字 → required=6（M6-B ×1.2 后 5→6），balance=10 ≥ 6 → 跳过 402 拦截式，进入预扣门控
                 "mode": "quick",
                 "user_id": "anon-debit-fail",
             },
@@ -344,7 +344,7 @@ def test_create_debit_fail_conflict_503():
         resp = client.post(
             "/api/generation/create",
             json={
-                "user_input": "字" * 5000,  # required=5，balance=10 ≥ 5 → 进入预扣门控
+                "user_input": "字" * 5000,  # quick×5000 字 → required=6（M6-B ×1.2 后 5→6），balance=10 ≥ 6 → 跳过 402 拦截式，进入预扣门控
                 "mode": "quick",
                 "user_id": "anon-debit-503",
             },
