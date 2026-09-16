@@ -206,3 +206,8 @@ fc69cea fix(quota): async check_quota + usage_log schema + /create wiring       
 | 2 | E2E 402 命中确认重跑 | 🟡 开放 | `e2e/m2-credits.test.ts` URL 已在 `362420f` 修复为 `${API_BASE}/api/quota/test/setup-balance`（L99 实测，`API_BASE` 默认 8001；Claude 疑点 L328/L345 `8000` 系旧行号，现行不存在）；待 Agnes 429 限流缓解后 WSL 3.12 侧 `npx playwright test e2e/m2-credits.test.ts`（`API_BASE=8001`）确认第 11 次命中 402 非 429；回归门槛已在 M2 PR 2 达成，收尾验证不阻塞合入 | @Codex |
 
 > 批次原则：随后续 M3+ 或 chore 批次同批提交，不单独开 commit。e2e URL 勘误项已由 `362420f` 闭合销项，不入本表。
+
+## M4 执行登记（@Hermes，2026-09-16）
+- 行号锚点漂移：`quota.py` 当前工作树没有 `reserve_credit`（文件总长 307 行）；`quota.py:311-328` 与锁定基准不一致。本次 B1 已按设计新增 `reserve_credit`（现落点 `quota.py:52-69`），后续登记统一按实码行号备案。
+- `quota.py:39-40` 确认属于 `estimate_required` 的 collaborative/full_control 分支，不是 B1 预扣点；作废不混用。
+- 已交付：`docs/gamma-competitive-analysis.md`；B1/B2/B3 代码与测试已落地。Vitest 全绿；E2E 当前 live 目标为 64 tests，历史 55/56 口径已登记漂移。
