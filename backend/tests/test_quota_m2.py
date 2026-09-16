@@ -96,9 +96,9 @@ def test_estimate_required_matrix():
     assert estimate_required("quick", 8500, "auto") == 8
     # 组 5：MULTIMODAL（视觉反思）
     assert estimate_required("quick", 100, "multimodal") == 6
-    # 组 6：checkpoint 暂停态不计费
-    assert estimate_required("collaborative", 5000, "auto") == 0
-    assert estimate_required("full_control", 5000, "auto") == 0
+    # 组 6：M5 协作/付费模式 402 拦截路径实码——按 input_len 档位折算，不再固定 0
+    assert estimate_required("collaborative", 5000, "auto") == 5
+    assert estimate_required("full_control", 5000, "auto") == 5
     # 边界：空输入（len=0）→ LIGHT 最低档
     assert estimate_required("quick", 0, "auto") == 1
 

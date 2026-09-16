@@ -352,3 +352,37 @@ def test_create_debit_fail_conflict_503():
         assert resp.status_code == 503
         body = resp.json()
         assert body["code"] == "service_unavailable"  # 503 code 行 :796
+
+
+def test_create_402_collaborative_mode_intercept():
+    """
+    B 协作/付费 402 拦截路径实码（M5 任务 B）：
+    mode=collaborative + 5000 字 → estimate_required=5（M5 起协作/付费按 input_len 档位折算，不再固定 0）。
+    驱动口径：check_quota→allowed=False（免费额度耗尽）；check_credits→balance=3 < required=5 → 402 拦截式命中。
+    验证 M5 行为冻结解除后 402 拦截路径对协作/付费模式实码可达。
+    """
+    _reset_state()
+
+    async def _mock_check_quota(user_id):
+        return (False, 10, 10)  # 免费额度耗尽 → allowed=False
+
+    async def _mock_check_credits(user_id, required=0):
+        return (False, 3, 10, 10)  # balance=3 < required=5 → 402（非 429）
+
+    with patch.object(generation, "check_quota", new=_mock_check_quota), \
+         patch.object(generation, "check_credits", new=_mock_check_credits), \
+         patch.object(generation, "record_usage", new=lambda *a, **k: None), \
+         TestClient(app) as client:
+        resp = client.post(
+            "/api/generation/create",
+            json={
+                "user_input": "字" * 5000,  # collaborative×5000 字 → required=5（M5 档位折算）
+                "mode": "collaborative",
+                "user_id": "anon-collab-402",
+            },
+        )
+        assert resp.status_code == 402
+        body = resp.json()
+        assert body["code"] == "insufficient_credits"  # 402 code 行 :778
+        assert body["credits"]["balance"] == 3
+        assert body["credits"]["required"] == 5  # M5：协作模式 required=5（非 M4 的 0）

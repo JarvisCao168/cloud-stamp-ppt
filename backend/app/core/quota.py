@@ -36,8 +36,6 @@ def estimate_required(mode: str, input_len: int, complexity: str = "auto") -> in
     选择，不承担计费折算；§二 现状锚点 estimated_cost/estimated_tokens 字段无消费点，本函数
     入参 (mode: str, input_len: int, complexity: str = "auto") → 出参 int，纯函数无副作用）。
     """
-    if mode in ("collaborative", "full_control"):
-        return 0
     if complexity == "multimodal":
         return 6
     if input_len <= 500:
