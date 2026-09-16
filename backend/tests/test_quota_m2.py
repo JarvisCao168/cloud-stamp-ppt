@@ -436,8 +436,11 @@ def test_reserve_credit_quick_mode_reason_semantics():
 
 def test_reserve_credit_full_control_mode_zero_required():
     """
-    M5 任务A：full_control 模式 estimate_required 返回 0，reserve_credit required=0
-    → 直接 (True, 0)，不触碰 DB（与 B1 回归组 1 一致，验证生成入口 full_control 路径）。
+    M5 任务A：reserve_credit 直传 required=0（上游 estimate_required 按档位折算后传 0 的语义验证），
+    → 直接 (True, 0)，不触碰 DB（M4-B3 骨架）。
+    勘误：M5-B（a525605）起 estimate_required 对 full_control 不再固定返回 0（按 input_len 档位 1/3/5/8 折算，
+    见 test_estimate_required_matrix 组 6 断言 :101）；本用例验证的是 required=0 直传门控语义，
+    与估算函数返回解耦，M4 行为冻结解除后仍有效。
     """
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = _make_test_db(tmpdir)
