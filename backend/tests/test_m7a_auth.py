@@ -163,6 +163,21 @@ class TestGrantLoginBonus:
                 await conn.close()
         asyncio.run(run())
 
+    def test_grant_bonus_returns_balance_tuple(self, test_db_path):
+        """M7-A 勘正：grant_login_bonus 成功路径必须返回 (True, new_balance) 元组，
+        消除原 :408 版 -> None 签名静默覆盖 :351 版 -> Tuple[bool,int] 的同名 bug。"""
+        db_path = test_db_path
+        import aiosqlite
+        async def run():
+            conn = await aiosqlite.connect(db_path)
+            try:
+                ok, bal = await grant_login_bonus("test-user-4", 100)
+                assert ok is True, "成功路径 ok 必须为 True"
+                assert bal == 100, f"成功路径返回余额应为 100，实得 {bal}"
+            finally:
+                await conn.close()
+        asyncio.run(run())
+
 
 class TestSessionAnchoring:
     def test_session_token_returns_correct_user_id(self):
