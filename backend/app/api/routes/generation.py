@@ -28,6 +28,7 @@ from ...core.quota import (
     reserve_credit,
     _now_utc_iso,
 )
+from ...core.auth import resolve_user_id_from_session
 from ...core.config import settings
 
 router = APIRouter()
@@ -76,6 +77,56 @@ def _collab_snapshot(session_id: str) -> Dict[str, Any]:
     }
 
 
+def _slide_edit_guard(
+    session_id: str, slide_index: int, base_revision: int, mutation
+) -> Dict[str, Any]:
+    """
+    M7-B G4-1: slide edit domain optimistic lock guard
+    (design doc v0.2 sec2 content 1 "slide-level collab reinforcement"):
+    - slides_revision[session_id]: current global revision of slide set
+      (whole-session scope, any slide edit bumps session revision +1,
+      read path consumes session-level snapshot);
+    - hit (base_revision == current) -> apply mutation, revision +1,
+      broadcast slide_update event (Phase 4 reserved enum, m4-b2 diff sec33),
+      return {"ok": True, "revision": new, "slide_index": ...};
+    - conflict (base_revision stale) -> return {"ok": False, "reason":
+      "slide_conflict", "current_revision": current, "slide_index": ...},
+      NO mutation applied, NO broadcast; caller-side rebase flow:
+      pull snapshot -> replay intent on latest baseline -> retry with
+      current_revision as base.
+    Zero-diff redline: user_credits table and debit_credits optimistic lock
+    structure (sec4.1 zero-diff region :88-138) untouched.
+    mutation contract: mutation(reg, slide_index, revision) provided by caller,
+    revision write-back handled uniformly by this guard (prevents concurrent
+    rev_map writes inside mutation causing missed conflict detection).
+    """
+    reg = sessions.setdefault(session_id, {})
+    reg.setdefault("slides", [])
+    rev_map: Dict[int, int] = reg.setdefault("_slide_revisions", {})
+    current = rev_map.get(slide_index, 0)
+    if base_revision != current:
+        return {
+            "ok": False,
+            "reason": "slide_conflict",
+            "current_revision": current,
+            "slide_index": slide_index,
+        }
+    revision = current + 1
+    mutation(reg, slide_index, revision)
+    rev_map[slide_index] = revision
+    collab_publish(
+        session_id,
+        "slide_update",
+        {
+            "session_id": session_id,
+            "slide_index": slide_index,
+            "revision": revision,
+            "ts": time.time(),
+        },
+    )
+    return {"ok": True, "revision": revision, "slide_index": slide_index}
+
+
 @router.get("/stream")
 async def collab_stream(
     http_request: Request,
@@ -98,14 +149,28 @@ async def collab_stream(
     B 线 presence 簿记（S2，B 草案 §三 S2）：per-connection 簿记，viewer_id 口径 =
     请求方 IP 解析（EventSource 协议下前端无法携带自定义 header，MVP 匿名口径；
     登录体系立项后升级为 session-bound 身份锚点，与 B 草案 §一 R5 同批，不在 M4 B 线范围）。
+
+    M7-B G4-1（设计稿 docs/m7-plan.md v0.2 §二 内容 3「收尾验证」）：
+    session-bound 身份锚点升级——已登录连接 X-Auth-Token 可携带（浏览器 Cookie /
+    URL query 透传），viewer_id 口径升级为「session-bound user_id」，
+    双发兼容：viewer_id（session-bound 时 = user_id 锚点）+ user_id（新增字段，
+    无效/未登录缺省不报错，前端「未上报」降级）。未登录连接维持既有 anon-{IP} 口径。
     """
     # B 线 per-connection 簿记（S2，B 草案 §三 S2）：
     # viewer_id 口径 = 请求方 IP 指纹（MVP 匿名口径；EventSource 协议下前端无法携带
     # X-User-Id header，降级为 anon-{IP}；登录体系立项后升级为 session-bound 身份锚点，
     # 与 B 草案 §一 R5 同批，不在 M4 B 线范围）
-    _viewer_id = (
-        f"anon-{http_request.client.host}" if http_request.client else "anon-unknown"
-    )
+    # M7-B G4-1：session-bound 双发兼容——已登录连接 X-Auth-Token → viewer_id = user_id 锚点；
+    # 未登录/无效 token → 回退既有 anon-{IP} 口径；X-User-Id header 在 session-bound 路径下
+    # 忽略（与 routes/quota.py::_resolve_user_id session 优先 → 三级解析链回退同构）
+    _auth_token = (http_request.headers.get("X-Auth-Token") or "").strip()
+    _bound_user_id = resolve_user_id_from_session(_auth_token)
+    if _bound_user_id:
+        _viewer_id = _bound_user_id  # session-bound 身份锚点（R5 收口：viewer_id = user_id）
+    else:
+        _viewer_id = (
+            f"anon-{http_request.client.host}" if http_request.client else "anon-unknown"
+        )
     _conn_state = {"joined": False}  # 可变闭包状态：join 首帧发出后置 True，防重复 left
     _presence_registry = _collab_presence.setdefault(session_id, {})
 
@@ -122,13 +187,19 @@ async def collab_stream(
         }
 
     def _presence_incremental(viewers_total: int) -> Dict[str, Any]:
-        """viewer_joined / viewer_left 增量事件 data schema（B 草案 §一 1.2）"""
-        return {
+        """viewer_joined / viewer_left 增量事件 data schema（B 草案 §一 1.2）
+        M7-B G4-1：双发兼容——新增 user_id 字段（仅 session-bound 连接上报，
+        匿名连接缺省不上报；前端缺失 → 「未上报」降级，禁止默认 1，m3-b 草案 §九-补 ①）
+        """
+        payload: Dict[str, Any] = {
             "session_id": session_id,
             "viewer_id": _viewer_id,
             "ts": time.time(),
             "viewers_total": viewers_total,
         }
+        if _bound_user_id:
+            payload["user_id"] = _bound_user_id
+        return payload
 
     async def event_stream() -> AsyncGenerator[str, None]:
         q: asyncio.Queue = asyncio.Queue()
@@ -145,6 +216,19 @@ async def collab_stream(
             #    回放路径（:136-138 循环）天然覆盖历史 presence 事件下发，无需新增回放通道（S1）
             _presence_registry[_viewer_id] = time.time()
             _conn_state["joined"] = True
+            # M7-B G4-1：join 批首帧 collab_status（session-bound 连接状态标记；
+            # B 线 3 事件既有协议零改动，双发字段经 viewer_joined/presence_snapshot
+            # 载荷 user_id 上报；匿名连接 status="anon"，user_id 缺省不上报）
+            _status_payload: Dict[str, Any] = {
+                "status": "session_bound" if _bound_user_id else "anon",
+            }
+            if _bound_user_id:
+                _status_payload["user_id"] = _bound_user_id
+            collab_publish(
+                session_id,
+                "collab_status",
+                _status_payload,
+            )
             collab_publish(
                 session_id,
                 "viewer_joined",
