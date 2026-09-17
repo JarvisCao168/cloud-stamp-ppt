@@ -336,3 +336,129 @@ def record_usage(user_id: str, ip: Optional[str] = None) -> None:
         conn.commit()
     finally:
         conn.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# M7-A 允许改动区新增（设计稿 docs/m7-plan.md v0.2 §4.2 第 1 条）：
+# grant_login_bonus 赠额写入函数——复用 debit_credits 同构乐观锁
+# （WHERE version=? 重试 3 次 + 退避 50ms），流水 reason='grant_login'；
+# credit_ledger 表结构零改动（复用既有列）。
+# 幂等去重置于调用侧（routes/auth.py 先查后写），本函数自身不做幂等检查。
+# §4.1 零改动区（:23 签名 / :88-138 乐观锁 / :327 record_usage / :48-49 早返 6）一律不触碰。
+# ═══════════════════════════════════════════════════════════════════════
+
+
+async def grant_login_bonus(user_id: str, amount: int) -> Tuple[bool, int]:
+    """
+    M7-A 赠额写入（§4.2 第 1 条，签名按 @JARVIS 裁定 ② 值 100 由调用侧传参）：
+    复用 debit_credits 同构乐观锁结构（§4.1 零改动区 :88-138 的镜像，非其改动）：
+    - 账户行不存在 → 先 INSERT 新行（balance=amount, version=0）再写流水
+    - 账户行存在 → UPDATE balance += amount, version+1（WHERE version=? 命中 0 行
+      退避 50ms 重试，3 次仍冲突 → (False, -2)，与 debit 503 语义同构）
+    - 流水 credit_ledger delta=+amount, reason='grant_login'（复用既有列，表结构零改动）
+    返回 (成功, 新余额)；成功路径新余额为加赠后值，失败路径 -2 为版本冲突兜底码。
+    """
+    if amount <= 0:
+        return (True, 0)
+    db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
+    for _ in range(3):
+        conn = await aiosqlite.connect(db_path)
+        try:
+            cursor = await conn.execute(
+                "SELECT version, balance FROM user_credits WHERE user_id = ?",
+                (user_id,),
+            )
+            row = await cursor.fetchone()
+            ts = _now_utc_iso()
+            if row is None:
+                # 账户行不存在（M1 建表不赠额首登路径）：新建行（balance=amount）
+                new_balance = amount
+                await conn.execute(
+                    "INSERT INTO user_credits (user_id, balance, version, updated_at) "
+                    "VALUES (?, ?, 0, ?)",
+                    (user_id, new_balance, ts),
+                )
+                await conn.commit()
+            else:
+                old_version, balance = row[0], row[1]
+                new_balance = balance + amount
+                cursor = await conn.execute(
+                    "UPDATE user_credits SET balance = ?, version = version + 1, updated_at = ? "
+                    "WHERE user_id = ? AND version = ?",
+                    (new_balance, ts, user_id, old_version),
+                )
+                await conn.commit()
+                if cursor.rowcount == 0:
+                    # 版本冲突：退避 50ms 后重读重试（与 debit_credits §3.5.2 同构）
+                    await asyncio.sleep(0.05)
+                    continue
+            # 流水入账（reason='grant_login'，session_id=NULL——赠额无生成会话）
+            await conn.execute(
+                "INSERT INTO credit_ledger (user_id, delta, reason, session_id, created_at) "
+                "VALUES (?, ?, ?, NULL, ?)",
+                (user_id, +amount, "grant_login", ts),
+            )
+            await conn.commit()
+            return (True, new_balance)
+        finally:
+            await conn.close()
+    return (False, -2)
+
+
+async def grant_login_bonus(user_id: str, amount: int) -> None:
+    """
+    M7-A 赠额闸门（§3.2）：首次登录一次性赠送积分。
+    复用 debit_credits 同构乐观锁（WHERE version=? 重试 3 次 + 退避 50ms）。
+    流水 reason='grant_login'，credit_ledger 表结构零改动。
+
+    注意：幂等去重在登录路由侧完成（core/auth.py 先查 credit_ledger
+    命中既有 reason='grant_login' 流水即跳过），本函数不做幂等检查。
+    竞态窗口（同 user_id 并发首登双标签页）由 @Codex 风险清单出加固方案，
+    不在本函数范围内。
+    """
+    if amount <= 0:
+        return
+    import asyncio as _asyncio
+    db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
+    for _ in range(3):
+        conn = await aiosqlite.connect(db_path)
+        try:
+            cursor = await conn.execute(
+                "SELECT version, balance FROM user_credits WHERE user_id = ?",
+                (user_id,),
+            )
+            row = await cursor.fetchone()
+            if row is None:
+                # 账户行不存在（未注册直接赠额场景兜底）：创建账户行再赠额
+                await conn.execute(
+                    "INSERT INTO user_credits (user_id, balance, version, updated_at) "
+                    "VALUES (?, 0, 0, ?) ON CONFLICT(user_id) DO NOTHING",
+                    (user_id, _now_utc_iso()),
+                )
+                await conn.commit()
+                cursor = await conn.execute(
+                    "SELECT version, balance FROM user_credits WHERE user_id = ?",
+                    (user_id,),
+                )
+                row = await cursor.fetchone()
+                if row is None:
+                    continue
+            old_version, balance = row[0], row[1]
+            cursor = await conn.execute(
+                "UPDATE user_credits SET balance = ?, daily_cost = daily_cost + 0, "
+                "version = version + 1, updated_at = ? WHERE user_id = ? AND version = ?",
+                (balance + amount, _now_utc_iso(), user_id, old_version),
+            )
+            await conn.commit()
+            if cursor.rowcount == 0:
+                await _asyncio.sleep(0.05)
+                continue
+            await conn.execute(
+                "INSERT INTO credit_ledger (user_id, delta, reason, session_id, created_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (user_id, amount, "grant_login", None, _now_utc_iso()),
+            )
+            await conn.commit()
+            return
+        finally:
+            await conn.close()

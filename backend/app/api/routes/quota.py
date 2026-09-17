@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 import aiosqlite
 
 from ...core.quota import check_quota, check_credits
+from ...core.auth import resolve_user_id_from_session
 from ...core.config import settings
 
 # 同步 DDL 常量（与 db.py SCHEMA_SQL 中 user_credits/credit_ledger 逐字一致，幂等）：
@@ -42,15 +43,25 @@ CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_time ON credit_ledger(user_id,
 router = APIRouter()
 
 
-def _resolve_user_id(http_request: Request) -> str:
-    """与 generation.py /create L665-670 同源三级解析：
-    请求头 X-User-Id（localStorage 指纹链路）→ anon-{host} → anon-unknown"""
+def _resolve_user_id(http_request: Request) -> tuple[str, str]:
+    """
+    M7-A session 优先 → 三级解析链回退（§3.1）。
+    返回 (user_id, resolution_source)：
+      - session token（X-Auth-Token header）有效 → (user_id, "session")
+      - X-User-Id header（localStorage 指纹）    → (user_id, "fingerprint")
+      - client.host                              → (anon-{host}, "anon-ip")
+      - 兜底                                     → (anon-unknown, "anon-unknown")
+    """
+    token = http_request.headers.get("X-Auth-Token", "").strip()
+    session_user_id = resolve_user_id_from_session(token)
+    if session_user_id:
+        return (session_user_id, "session")
     fingerprint = http_request.headers.get("X-User-Id", "").strip()
     if fingerprint:
-        return fingerprint
+        return (fingerprint, "fingerprint")
     if http_request.client:
-        return f"anon-{http_request.client.host}"
-    return "anon-unknown"
+        return (f"anon-{http_request.client.host}", "anon-ip")
+    return ("anon-unknown", "anon-unknown")
 
 
 @router.get("/status")
@@ -71,12 +82,19 @@ async def quota_status(http_request: Request):
     finally:
         await conn.close()
 
-    user_id = _resolve_user_id(http_request)
+    user_id, resolution_source = _resolve_user_id(http_request)
 
     # 可选查询参数 user_id 仅在与调用方自身指纹一致时放行，否则 404（oracle 防护，R6）
     explicit = http_request.query_params.get("user_id")
     if explicit is not None and explicit != user_id:
         raise HTTPException(status_code=404, detail="not found")
+
+    # M7-A：auth 块（§3.3）——脱敏展示，session-bound 时 logged_in=True
+    auth_block = {
+        "logged_in": (resolution_source == "session"),
+        "user_id": user_id,
+        "resolution_source": resolution_source,
+    }
 
     # M2 PR 2 勘误（随 CreditPanel 数据源同批）：required 不再是 M1 硬编码 0，
     # 改为按 §3.5.1 折算函数 estimate_required 对 quick/auto 场景的默认档取 1
@@ -90,6 +108,7 @@ async def quota_status(http_request: Request):
     # §3.4 schema：usage 块 = 免费额度计数（used/limit/reset_at）+ credits 块 = 积分账户
     # required 对齐 §3.5.1 折算口径：未提供 prompt 长度时按 LIGHT 档默认 1（M1 硬编码 0 已作废）
     return JSONResponse(content={
+        "auth": auth_block,
         "usage": {
             "used": used,
             "limit": limit,

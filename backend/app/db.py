@@ -12,7 +12,7 @@ from app.core.config import settings
 
 # 完整的 schema 定义（含 is_system 字段 + 多对多关联表）
 SCHEMA_SQL = """
--- 序号样式表（含 is_system 字段，区分系统内置 vs 用户上传）
+-- 用户账户（M7-A 登录体系；user_id 为 session 锚定 ID，与 user_credits.user_id 同源）
 CREATE TABLE IF NOT EXISTS numbering_styles (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -85,6 +85,18 @@ CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_time ON credit_ledger(user_id,
 CREATE INDEX IF NOT EXISTS idx_numbering_styles_type ON numbering_styles(type);
 CREATE INDEX IF NOT EXISTS idx_numbering_styles_tags ON numbering_styles(tags);
 CREATE INDEX IF NOT EXISTS idx_templates_default_numbering ON templates(default_numbering_id);
+
+-- 用户账户（M7-A 登录体系；user_id 为 session 锚定 ID，与 user_credits.user_id 同源）
+CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    email         TEXT NOT NULL UNIQUE,
+    password_salt TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    user_id       TEXT NOT NULL UNIQUE,
+    created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_login_at TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id);
 """
 
 # 初始序号样式种子数据（30条，与 assets.py NUMBERING_STYLES 一致）
